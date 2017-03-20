@@ -77,8 +77,8 @@ function onMouseDown( event ) {
   event.preventDefault();
 
   var l = new lzrpn.ln();
-  l.weight = 4;
-  l.rgba = [0.0, 1.0, 1.0, 1.0]
+  l.weight = 16;
+  l.rgba = [0.0, 1.0, 1.0, 0.7]
   l.vertices.push( vec2.clone(anchorP) );
 
   anchorP[0] = rndrr.px2gl( event.clientX );

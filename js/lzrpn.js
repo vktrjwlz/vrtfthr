@@ -536,6 +536,7 @@ lzrpn.sg.offset = function (out, sg, n) { // float n
     // get orthogonal normalized delta vector and multiply by offset distance
     var nrml = vec2.create();
     lzrpn.sg.orthoNorm(nrml, sg);
+    vec2.scale(nrml, nrml, n);
 
     // copy sg sg to out sg and offset out origin by offset vec2 a
     lzrpn.sg.copy(out, sg);
@@ -577,8 +578,7 @@ lzrpn.sg.orthoNorm = function (nrml, sg) { // calc normal orthogonal to segment
 lzrpn.EPSILON = 0.001
 lzrpn.v2 = {}
 lzrpn.v2.qRot = function (ouv, v) { // quarter rotation clockwise
-  ouv[0] = v[1];
-  ouv[1] = -v[0];
+  vec2.set(ouv, v[1], -v[0]);
 }
 lzrpn.v2.flip = function (ouv, v) { // flip vector
   vec2.set(ouv, -v[0], -v[1]);
@@ -615,6 +615,8 @@ lzrpn.ln.prototype = {
     // generate segment from vertices
     var sg = lzrpn.sg.fromEnd(ln.vertices[0], ln.vertices[1]);
 
+    // TODO: end caps
+
     // offset a & b segments by weight / 2
     var sga = lzrpn.sg.create();
     lzrpn.sg.offset(sga, sg, ln.weight * 0.5);
@@ -630,10 +632,10 @@ lzrpn.ln.prototype = {
     lzrpn.sg.origin(wv, sgb);
     wvs.push(vec2.clone(wv));
 
-    lzrpn.sg.end(wv, sgb);
+    lzrpn.sg.end(wv, sga);
     wvs.push(vec2.clone(wv));
 
-    lzrpn.sg.end(wv, sga);
+    lzrpn.sg.end(wv, sgb);
     wvs.push(vec2.clone(wv));
 
     // build triangles
