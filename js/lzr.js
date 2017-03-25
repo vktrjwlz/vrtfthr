@@ -3,9 +3,9 @@
 // * render pns in browser with webgl
 // * pack pns into jbs composed of a sht for each material
 // * export shts as svg
-var lzrpn = {};
+var lzr = {};
 
-// lzrpn ontology
+// lzr ontology
 // * pn -> one lazercut pane, optionally with voids
 //   ~ bnd -> boundary loop
 //   ~ vds -> (0-n) void loops
@@ -17,7 +17,7 @@ var lzrpn = {};
 // ****************
 // rndrr -> render mshs in browser using webgl
 //
-lzrpn.rndrr = function (cnvs) {
+lzr.rndrr = function (cnvs) {
   var rndrr = this;
   rndrr.cnvs = cnvs; // canvas element
   rndrr.pxl_rtio = window.devicePixelRatio || 1;
@@ -32,10 +32,10 @@ lzrpn.rndrr = function (cnvs) {
 
   // init shader program
   rndrr.shader = null;
-  var vertexShader = lzrpn._getShader(
-    rndrr.gl, rndrr.gl.VERTEX_SHADER, lzrpn._vertexShader);
-  var fragmentShader = lzrpn._getShader(
-    rndrr.gl, rndrr.gl.FRAGMENT_SHADER, lzrpn._fragmentShader);
+  var vertexShader = lzr._getShader(
+    rndrr.gl, rndrr.gl.VERTEX_SHADER, lzr._vertexShader);
+  var fragmentShader = lzr._getShader(
+    rndrr.gl, rndrr.gl.FRAGMENT_SHADER, lzr._fragmentShader);
   rndrr.shader = rndrr.gl.createProgram();
   rndrr.gl.attachShader(rndrr.shader, vertexShader);
   rndrr.gl.attachShader(rndrr.shader, fragmentShader);
@@ -66,9 +66,9 @@ lzrpn.rndrr = function (cnvs) {
   rndrr.setResolution();
 }
 
-lzrpn.rndrr.prototype = {
+lzr.rndrr.prototype = {
 
-  constructor: lzrpn.rndrr,
+  constructor: lzr.rndrr,
 
   px2gl: function (px) {
     var rndrr = this;
@@ -119,7 +119,7 @@ lzrpn.rndrr.prototype = {
   }
 }
 
-lzrpn._getShader = function (gl, type, str) {
+lzr._getShader = function (gl, type, str) {
   var shader;
   shader = gl.createShader(type);
 
@@ -134,7 +134,7 @@ lzrpn._getShader = function (gl, type, str) {
   return shader;
 }
 
-lzrpn._vertexShader =
+lzr._vertexShader =
   "attribute vec2 a_position;" +
   "attribute vec4 a_color;" +
 
@@ -157,7 +157,7 @@ lzrpn._vertexShader =
   "  v_color = a_color;" +
   "}";
 
-lzrpn._fragmentShader =
+lzr._fragmentShader =
   "precision mediump float;" +
 
   "varying vec4 v_color;" +
@@ -172,16 +172,16 @@ lzrpn._fragmentShader =
 // ****************
 // glbfr -> gl data buffer
 //
-lzrpn.glbfr = function () {
+lzr.glbfr = function () {
   var glbfr = this;
   glbfr.itemSize = 0;
   glbfr.numItems = 0;
   glbfr.glid = null;
 }
 
-lzrpn.glbfr.prototype = {
+lzr.glbfr.prototype = {
 
-  constructor: lzrpn.glbfr,
+  constructor: lzr.glbfr,
 
   loadTriangles: function(gl, vertices, triangles) {
     var glbfr = this;
@@ -240,18 +240,18 @@ lzrpn.glbfr.prototype = {
 // ****************
 // msh -> triangle mesh to be rendered by webgl
 //
-lzrpn.msh = function () {
+lzr.msh = function () {
   var msh = this;
   msh.rgba = [0, 0, 0, 1];
   msh.vertices = []; // list of vec2s
   msh.triangles = []; // list of list of indices into vertices
-  msh.colorBuff = new lzrpn.glbfr();
-  msh.positionBuff = new lzrpn.glbfr();
+  msh.colorBuff = new lzr.glbfr();
+  msh.positionBuff = new lzr.glbfr();
 }
 
-lzrpn.msh.prototype = {
+lzr.msh.prototype = {
 
-  constructor: lzrpn.msh,
+  constructor: lzr.msh,
 
   buff: function (gl) {
     var msh = this;
@@ -285,9 +285,9 @@ lzrpn.msh.prototype = {
 // sg data held by float32array of size 4
 // sg[0], sg[1] -> origin vec2
 // sg[2], sg[3] -> delta vec2
-lzrpn.sg = {}
+lzr.sg = {}
 
-lzrpn.sg.create = function () {
+lzr.sg.create = function () {
   var out = new glMatrix.ARRAY_TYPE(4);
   out[0] = 0;
   out[1] = 0;
@@ -296,7 +296,7 @@ lzrpn.sg.create = function () {
   return out;
 }
 
-lzrpn.sg.fromDelta = function (orig, dlta) {
+lzr.sg.fromDelta = function (orig, dlta) {
   var out = new glMatrix.ARRAY_TYPE(4);
   out[0] = orig[0];
   out[1] = orig[1];
@@ -305,7 +305,7 @@ lzrpn.sg.fromDelta = function (orig, dlta) {
   return out;
 }
 
-lzrpn.sg.fromEnd = function (orig, end) {
+lzr.sg.fromEnd = function (orig, end) {
   var out = new glMatrix.ARRAY_TYPE(4);
   var d = vec2.create();
   vec2.sub(d, end, orig);
@@ -316,7 +316,7 @@ lzrpn.sg.fromEnd = function (orig, end) {
   return out;
 }
 
-lzrpn.sg.clone = function (sg) {
+lzr.sg.clone = function (sg) {
   var out = new glMatrix.ARRAY_TYPE(4);
   out[0] = sg[0];
   out[1] = sg[1];
@@ -325,7 +325,7 @@ lzrpn.sg.clone = function (sg) {
   return out;
 }
 
-lzrpn.sg.copy = function (out, sg) {
+lzr.sg.copy = function (out, sg) {
   out[0] = sg[0];
   out[1] = sg[1];
   out[2] = sg[2];
@@ -333,45 +333,45 @@ lzrpn.sg.copy = function (out, sg) {
   return out;
 }
 
-lzrpn.sg.origin = function (ouv, sg) {
+lzr.sg.origin = function (ouv, sg) {
   ouv[0] = sg[0];
   ouv[1] = sg[1];
   return ouv;
 }
 
-lzrpn.sg.setOrigin = function (out, p) {
+lzr.sg.setOrigin = function (out, p) {
   out[0] = p[0];
   out[1] = p[1];
   return out;
 }
 
-lzrpn.sg.delta = function (ouv, sg) {
+lzr.sg.delta = function (ouv, sg) {
   ouv[0] = sg[2];
   ouv[1] = sg[3];
   return ouv;
 }
 
-lzrpn.sg.setDelta = function (out, p) {
+lzr.sg.setDelta = function (out, p) {
   out[2] = p[0];
   out[3] = p[1];
   return out;
 }
 
-lzrpn.sg.end = function (ouv, sg) {
+lzr.sg.end = function (ouv, sg) {
   var o = vec2.create();
-  lzrpn.sg.origin( o, sg );
+  lzr.sg.origin( o, sg );
   var d = vec2.create();
-  lzrpn.sg.delta( d, sg );
+  lzr.sg.delta( d, sg );
   vec2.add( ouv, o, d );
   return ouv;
 }
 
-lzrpn.sg.setEnd = function (out, p) {
+lzr.sg.setEnd = function (out, p) {
 
   // get delta from origin of out to p end point vec2
   var o = vec2.create()
   var d = vec2.create();
-  lzrpn.sg.origin( o, out );
+  lzr.sg.origin( o, out );
   vec2.sub( d, p, o );
 
   // set delta component of out sgment
@@ -380,18 +380,22 @@ lzrpn.sg.setEnd = function (out, p) {
   return out;
 }
 
-lzrpn.sg.stringize = function (sg) {
+lzr.sg.stringize = function (sg) {
   return "sg( (" + sg[0] + ", " + sg[1] + "), ("
                   + sg[2] + ", " + sg[3] + ") )";
 }
 
+lzr.sg.mag = function(sg) {
+  return vec2.length(vec2.fromValues(sg[2], sg[3]));
+}
+
 
 // test whether given point is left of segment
-lzrpn.sg.isLeft = function (sg, p) { // vec2 p
+lzr.sg.isLeft = function (sg, p) { // vec2 p
   var a = vec2.create();
-  lzrpn.sg.origin( a, sg );
+  lzr.sg.origin( a, sg );
   var b = vec2.create();
-  lzrpn.sg.end( b, sg );
+  lzr.sg.end( b, sg );
   return (((b[0]-a[0])*(p[1]-a[1])) - ((b[1]-a[1])*(p[0]-a[0]))) < 0;
 }
 
@@ -401,37 +405,37 @@ lzrpn.sg.isLeft = function (sg, p) { // vec2 p
 // 0 -> region is to right of line
 // 1 -> region is to left of line
 // 2 -> region intersects line
-lzrpn.sg.inRadius = function (sg, p, r) { // vec2 p, float r
-  if (lzrpn.sg.distance(sg, p) < r) return 2;
-  if (lzrpn.sg.isLeft(sg, p)) return 1;
+lzr.sg.inRadius = function (sg, p, r) { // vec2 p, float r
+  if (lzr.sg.distance(sg, p) < r) return 2;
+  if (lzr.sg.isLeft(sg, p)) return 1;
   return 0;
 }
 
 // find the point at the intersection of two segments
-lzrpn.sg.intersect = function (ouv, sga, sgb) { // lzrpn.seg sg
+lzr.sg.intersect = function (ouv, sga, sgb) { // lzr.seg sg
 
   // Ax + By = C
   // A = y2 - y1
   // B = x1 - x2
   // C = A*x1 + B*y1
   var s1 = vec2.create();
-  lzrpn.sg.origin( s1, sga );
+  lzr.sg.origin( s1, sga );
   var e1 = vec2.create();
-  lzrpn.sg.end( e1, sga );
+  lzr.sg.end( e1, sga );
   var a1 = e1[1] - s1[1];
   var b1 = s1[0] - e1[0];
   var c1 = (a1 * s1[0]) + (b1 * s1[1]);
   var s2 = vec2.create();
-  lzrpn.sg.origin( s2, sgb );
+  lzr.sg.origin( s2, sgb );
   var e2 = vec2.create();
-  lzrpn.sg.end( e2, sgb );
+  lzr.sg.end( e2, sgb );
   var a2 = e2[1] - s2[1];
   var b2 = s2[0] - e2[0];
   var c2 = (a2 * s2[0]) + (b2 * s2[1]);
 
   // if determinant is ~0 lines are parallel
   var det = (a1 * b2) - (a2 * b1);
-  if (Math.abs(det) < lzrpn.EPSILON) return null;
+  if (Math.abs(det) < lzr.EPSILON) return null;
 
   ouv[0] = ((b2 * c1) - (b1 * c2)) / det;
   ouv[1] = ((a1 * c2) - (a2 * c1)) / det;
@@ -440,64 +444,64 @@ lzrpn.sg.intersect = function (ouv, sga, sgb) { // lzrpn.seg sg
 }
 
 // set origin of out seg to intersection of seg sg and other seg o
-lzrpn.sg.intersectOrigin = function (out, sga, sgb) {
+lzr.sg.intersectOrigin = function (out, sga, sgb) {
 
   var p = vec2.create();
-  lzrpn.sg.intersect( p, sga, sgb );
+  lzr.sg.intersect( p, sga, sgb );
 
   if (p == null) return false;
 
-  lzrpn.sg.setOrigin( out, p );
+  lzr.sg.setOrigin( out, p );
 
-  // console.log( "new origin for sg: ", lzrpn.sg.stringize(out) );
+  // console.log( "new origin for sg: ", lzr.sg.stringize(out) );
 
   return true;
 }
 
 // set origin and delta of out sg to intersections of sga & om and sg & on
-lzrpn.sg.intersectInterval = function (out, sga, sgb, sgc) { // lzrpn.sg
+lzr.sg.intersectInterval = function (out, sga, sgb, sgc) { // lzr.sg
   var p = vec2.create();
-  lzrpn.sg.intersect(p, sga, sgb);
+  lzr.sg.intersect(p, sga, sgb);
   var q = vec2.create();
-  lzrpn.sg.intersect(q, sga, sgc);
+  lzr.sg.intersect(q, sga, sgc);
 
   if (p === null || q === null) return false;
 
   // set origin
-  lzrpn.sg.setOrigin( out, p );
+  lzr.sg.setOrigin( out, p );
 
   // set delta from p -> q
-  lzrpn.sg.setEnd( out, q );
+  lzr.sg.setEnd( out, q );
 
   return true;
 }
 
 // project vec2 p onto sg sg and set out vec2 ouv
-lzrpn.sg.project = function (ouv, p, sg) { // vec2 ouv, p / lzrpn.sg sg
+lzr.sg.project = function (ouv, p, sg) { // vec2 ouv, p / lzr.sg sg
   var a = vec2.create();
-  vec2.sub( a, p, lzrpn.sg.origin(sg) ); // a is vector from origin to p
+  vec2.sub( a, p, lzr.sg.origin(sg) ); // a is vector from origin to p
 
   // project a onto delta vector
-  var b = vec2.clone( lzrpn.sg.delta(sg) );
+  var b = vec2.clone( lzr.sg.delta(sg) );
   vec2.normalize( b, b );
   vec2.scalar( b, vec2.dot(a, b) );
 
   // add vector b to origin to get new point projected onto sgment
-  vec2.add( out, lzrpn.sg.origin(sg), b );
+  vec2.add( out, lzr.sg.origin(sg), b );
   return out;
 }
 
 // return distance from sg sg to vec2 p, orthogonal to sg
-lzrpn.sg.distance = function (sg, p) { // vec2 p
+lzr.sg.distance = function (sg, p) { // vec2 p
   var a = vec2.create();
-  lzrpn.sg.project( a, p, sg );
+  lzr.sg.project( a, p, sg );
   vec2.sub( a, a, p );
   return vec2.length( a );
 }
 
 // reflect delta vec2 p across delta of sg sg and assign to vec2 ouv
-lzrpn.sg.reflectDelta = function (ouv, p, sg) {
-  var a = vec2.clone( lzrpn.sg.delta(sg) );
+lzr.sg.reflectDelta = function (ouv, p, sg) {
+  var a = vec2.clone( lzr.sg.delta(sg) );
   vec2.normalize( a, a );
   vec2.scalar( a, vec2.dot(p, a) ); // a is p projected onto sg
   var b = vec2.create();
@@ -508,66 +512,66 @@ lzrpn.sg.reflectDelta = function (ouv, p, sg) {
 }
 
 // reflect sg sg across mirror sg msg and assign to sg out
-lzrpn.sg.reflect = function (out, sg, msg) { // lzrpn.sg out, sg
+lzr.sg.reflect = function (out, sg, msg) { // lzr.sg out, sg
 
     // get offset vectors to start and end of sgment from start of this sg
     var a = vec2.create();
-    vec2.sub( a, lzrpn.sg.origin(sg), lzrpn.sg.origin(msg) );
+    vec2.sub( a, lzr.sg.origin(sg), lzr.sg.origin(msg) );
     var b = vec2.create();
-    vec2.sub( b, lzrpn.sg.end(sg), lzrpn.sg.origin(msg) );
+    vec2.sub( b, lzr.sg.end(sg), lzr.sg.origin(msg) );
 
     // reflect offset vectors across this segment
-    lzrpn.sg.reflectDelta( a, a, sg );
-    lzrpn.sg.reflectDelta( b, b, sg );
+    lzr.sg.reflectDelta( a, a, sg );
+    lzr.sg.reflectDelta( b, b, sg );
 
     // add to origin vector
-    vec2.add( a, a, lzrpn.sg.origin(sg) );
-    vec2.add( b, b, lzrpn.sg.origin(sg) );
+    vec2.add( a, a, lzr.sg.origin(sg) );
+    vec2.add( b, b, lzr.sg.origin(sg) );
 
     // set out sg origin and delta
-    lzrpn.sg.setOrigin( out, a );
-    lzrpn.sg.setEnd( out, b );
+    lzr.sg.setOrigin( out, a );
+    lzr.sg.setEnd( out, b );
 
     return out;
   },
 
-lzrpn.sg.offset = function (out, sg, n) { // float n
+lzr.sg.offset = function (out, sg, n) { // float n
 
     // get orthogonal normalized delta vector and multiply by offset distance
     var nrml = vec2.create();
-    lzrpn.sg.orthoNorm(nrml, sg);
+    lzr.sg.orthoNorm(nrml, sg);
     vec2.scale(nrml, nrml, n);
 
     // copy sg sg to out sg and offset out origin by offset vec2 a
-    lzrpn.sg.copy(out, sg);
+    lzr.sg.copy(out, sg);
     var nwo = vec2.create();
-    lzrpn.sg.origin(nwo, out);
+    lzr.sg.origin(nwo, out);
     vec2.add(nwo, nrml, nwo);
-    lzrpn.sg.setOrigin(out, nwo);
+    lzr.sg.setOrigin(out, nwo);
   },
 
-lzrpn.sg.qRot = function (out, sg) { // calc quarter rotation of delta vec
+lzr.sg.qRot = function (out, sg) { // calc quarter rotation of delta vec
   var dlta = vec2.create();
-  lzrpn.sg.dlta( dlta, sg );
-  lzrpn.sg.copy( out, sg );
+  lzr.sg.dlta( dlta, sg );
+  lzr.sg.copy( out, sg );
   vec2.set( dlta, -dlta[1], dlta[0] ); // quarter rotation
-  lzrpn.sg.setDelta( out, dlta );
+  lzr.sg.setDelta( out, dlta );
 }
 
-lzrpn.sg.orthoNorm = function (nrml, sg) { // calc normal orthogonal to segment
+lzr.sg.orthoNorm = function (nrml, sg) { // calc normal orthogonal to segment
 
   // generate normal from segment delta
-  lzrpn.sg.delta(nrml, sg); // set normal to dlta component of segment
+  lzr.sg.delta(nrml, sg); // set normal to dlta component of segment
   vec2.normalize(nrml, nrml);
-  lzrpn.v2.qRot(nrml, nrml);
+  lzr.v2.qRot(nrml, nrml);
 
   // if normal is to left of segment flip it
   var n = vec2.clone(nrml);
   var orig = vec2.create();
-  lzrpn.sg.origin(orig, sg);
+  lzr.sg.origin(orig, sg);
   vec2.add(n, n, orig);
-  if (lzrpn.sg.isLeft(sg, n)) {
-    lzrpn.v2.flip(nrml, nrml);
+  if (lzr.sg.isLeft(sg, n)) {
+    lzr.v2.flip(nrml, nrml);
   }
 }
 // --sg
@@ -575,13 +579,40 @@ lzrpn.sg.orthoNorm = function (nrml, sg) { // calc normal orthogonal to segment
 
 // ****************
 // vect2 util funcs
-lzrpn.EPSILON = 0.001
-lzrpn.v2 = {}
-lzrpn.v2.qRot = function (ouv, v) { // quarter rotation clockwise
+lzr.EPSILON = 0.01
+lzr.v2 = {}
+lzr.v2.qRot = function (ouv, v) { // quarter rotation clockwise
   vec2.set(ouv, v[1], -v[0]);
 }
-lzrpn.v2.flip = function (ouv, v) { // flip vector
+lzr.v2.flip = function (ouv, v) { // flip vector
   vec2.set(ouv, -v[0], -v[1]);
+}
+lzr.v2.cmp = function (a, b) {
+  var c = a[0] - b[0];
+  if (Math.abs(c) > lzr.EPSILON) {
+    return c;
+  }
+  c = a[1] - b[1];
+  if (Math.abs(c) > lzr.EPSILON) {
+    return c;
+  }
+  return 0;
+}
+// barycentric triangle interior test
+// http://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
+lzr.v2.in_triangle = function (v, a, b, c) {
+    var s = a[1] * c[0] - a[0] * c[1] + (c[1] - a[1]) * v[0] + (a[0] - c[0]) * v[1];
+    var t = a[0] * b[1] - a[1] * b[0] + (a[1] - b[1]) * v[0] + (b[0] - a[0]) * v[1];
+
+    if ((s < 0) != (t < 0)) return false;
+
+    var area = -b[1] * c[0] + a[1] * (c[0] - b[0]) + a[0] * (b[1] - c[1]) + b[0] * c[1];
+    if (area < 0.0) {
+        s = -s;
+        t = -t;
+        area = -area;
+    }
+    return s > 0 && t > 0 && (s + t) <= area;
 }
 // --util
 // ********
@@ -589,19 +620,19 @@ lzrpn.v2.flip = function (ouv, v) { // flip vector
 // ****************
 // ln -> line segment to be rendered with webgl
 
-lzrpn.ln = function () {
+lzr.ln = function () {
   var ln = this;
   ln.rgba = [0, 0, 0, 1];
   ln.vertices = []; // list of vec2s
   ln.weight = 1.0;
-  ln.colorBuff = new lzrpn.glbfr();
-  ln.positionBuff = new lzrpn.glbfr();
+  ln.colorBuff = new lzr.glbfr();
+  ln.positionBuff = new lzr.glbfr();
 }
 
-lzrpn.ln.prototype = {
+lzr.ln.prototype = {
 
-  constructor: lzrpn.ln,
-  render: lzrpn.msh.prototype.render,
+  constructor: lzr.ln,
+  render: lzr.msh.prototype.render,
 
   buff: function (gl) {
     var ln = this;
@@ -613,29 +644,29 @@ lzrpn.ln.prototype = {
     var wts = []; // weighted triangles
 
     // generate segment from vertices
-    var sg = lzrpn.sg.fromEnd(ln.vertices[0], ln.vertices[1]);
+    var sg = lzr.sg.fromEnd(ln.vertices[0], ln.vertices[1]);
 
     // TODO: end caps
 
     // offset a & b segments by weight / 2
-    var sga = lzrpn.sg.create();
-    lzrpn.sg.offset(sga, sg, ln.weight * 0.5);
-    var sgb = lzrpn.sg.create();
-    lzrpn.sg.offset(sgb, sg, ln.weight * -0.5);
+    var sga = lzr.sg.create();
+    lzr.sg.offset(sga, sg, ln.weight * 0.5);
+    var sgb = lzr.sg.create();
+    lzr.sg.offset(sgb, sg, ln.weight * -0.5);
 
     // build weighted vertices
     var wv = vec2.create();
 
-    lzrpn.sg.origin(wv, sga);
+    lzr.sg.origin(wv, sga);
     wvs.push(vec2.clone(wv));
 
-    lzrpn.sg.origin(wv, sgb);
+    lzr.sg.origin(wv, sgb);
     wvs.push(vec2.clone(wv));
 
-    lzrpn.sg.end(wv, sga);
+    lzr.sg.end(wv, sga);
     wvs.push(vec2.clone(wv));
 
-    lzrpn.sg.end(wv, sgb);
+    lzr.sg.end(wv, sgb);
     wvs.push(vec2.clone(wv));
 
     // build triangles
@@ -651,21 +682,21 @@ lzrpn.ln.prototype = {
 
 // ****************
 // rng -> ring to be rendered with webgl
-lzrpn.rng = function () {
+lzr.rng = function () {
   var rng = this;
   rng.radius = 8.0;
   rng.center = vec2.fromValues(0.0, 0.0);
   rng.weight = 1.0;
   rng.rgba = [0, 0, 0, 1];
   rng.segments = 8;
-  rng.colorBuff = new lzrpn.glbfr();
-  rng.positionBuff = new lzrpn.glbfr();
+  rng.colorBuff = new lzr.glbfr();
+  rng.positionBuff = new lzr.glbfr();
 }
 
-lzrpn.rng.prototype = {
+lzr.rng.prototype = {
 
-  constructor: lzrpn.rng,
-  render: lzrpn.msh.prototype.render,
+  constructor: lzr.rng,
+  render: lzr.msh.prototype.render,
 
   buff: function (gl) {
     var rng = this;
@@ -707,4 +738,227 @@ lzrpn.rng.prototype = {
   }
 }
 // --rng
+// ********
+
+// ****************
+// pn -> a single lazercut pane, defined by a boundary loop & 0+ void loops
+//
+// bndry, vds, vrts,
+//
+lzr.pn = function () {
+  var pn = this;
+  pn.bndry = new lzr.lp();
+  pn.vds = []; // list of loops sorted by min x value
+  pn.rgba = [0, 0, 0, 1];
+  pn.vertices = []; // list of vec2s
+  pn.triangles = []; // list of list of indices into vertices
+  pn.colorBuff = new lzr.glbfr();
+  pn.positionBuff = new lzr.glbfr();
+}
+
+lzr.pn.prototype = {
+
+  constructor: lzr.pn,
+
+  render: lzr.msh.prototype.render,
+
+  buff: function (gl) {
+    var pn = this;
+
+    // splice void loops into boundary loop to create vertex list
+    pn.bndry.set_mnmx();
+    var vs = pn.bndry.ordered_vrts(true); // ccw vrts for boundary
+    if (pn.vds.length > 0) {
+      pn.vds.sort(lzr.loop.cmp);
+      for (var i = 0; i < pn.vds.length; i++) {
+        lzr.pn._splice_void(vs, pn.vds[i]);
+      }
+    }
+    console.log("ready to clip ears from vrts: ");
+    console.log(vs);
+
+    // generate triangles by clipping ears
+    dxs = [];
+    trngls = [];
+    for (i = 0; i < vs.length; i++) dxs.push(i);
+    while (dxs.length > 3) {
+      lzr.pn._clip_ear(trngls, vs, dxs);
+    }
+    console.log("triangles: " + trngls.length);
+    for (var i = 0; i < trngls.length; i++) {
+      console.log(i + ": " + trngls[i]);
+    }
+    trngls.push([dxs[0], dxs[1], dxs[2]]); // add final triangle
+
+    console.log(trngls);
+
+    // load triangle vertices into position buffer
+    pn.vertices = vs;
+    pn.triangles = trngls;
+    pn.positionBuff.loadTriangles( gl, pn.vertices, pn.triangles );
+
+    // load color vertex for each triangle vertex in position buffer
+    pn.colorBuff.loadColor( gl, pn.positionBuff.numItems, pn.rgba );
+  }
+}
+
+// TODO - change for algo that works generally
+lzr.pn._splice_void = function (vs, lp) {
+
+  if (lp.vrts.length <= 0) return;
+
+  // get min void loop vertex
+  lp.set_mnmx();
+  var vv = lp.mn;
+
+  // find closest boundary vertex
+  var j = 0;
+  var mndx = 0;
+  var bv = lp.vrts[0];
+  var mndlta = lzr.sg.mag(lzr.sg.fromEnd(bv, vv));
+  while (j < lp.vrts.length - 1) {
+    j++;
+    bv = lp.vrts[j];
+    var dlta = lzr.sg.mag(lzr.sg.fromEnd(bv, vv));
+    if (dlta < mndlta) {
+      mndlta = dlta;
+      mndx = j;
+    }
+  }
+
+  // splice cw loop vertices into list
+  var vvs = lp.ordered_vrts(false);
+  vvs.push(vv); // add entry void vertex at end again
+  vvs.push(pn.vertices[mndx]); // add entry outer vertex again
+  vs = vs.slice(0, mndx + 1).concat(vvs, vs.slice(mndx + 1));
+}
+
+// identify ear, add to triangles list & remove center node from dxs
+lzr.pn._clip_ear = function (trngls, vs, dxs) {
+  console.log("clipping dxs: " + dxs);
+  if (dxs.length < 4) {
+    console.log("cant clip ear from fewer than 4 vertices");
+    return;
+  }
+  for (var i = 0; i < dxs.length; i++) {
+    var a = i - 2;
+    if (a < 0) a = dxs.length + a;
+    var b = i - 1;
+    if (b < 0) b = dxs.length + b;
+    var c = i;
+    console.log("testing ["+ a + ", " + b + ", " + c + "]");
+    if (lzr.pn._is_convex(vs[dxs[a]], vs[dxs[b]], vs[dxs[c]])) {
+      // test if any *other* vertices are inside
+      var inside = false;
+      for (var j = 0; j < vs.length; j++) {
+        var v = vs[j];
+        if (v !== vs[a] && v !== vs[b] && v !== vs[c]) {
+          if (lzr.v2.in_triangle(v, vs[dxs[a]], vs[dxs[b]], vs[dxs[c]])) {
+            inside = true;
+          }
+        }
+      }
+      if (!inside) { // found an ear, clip it!!
+        trngls.push([dxs[a], dxs[b], dxs[c]]); // add triangle to list
+        console.log("adding ["+ dxs[a] + ", " + dxs[b] + ", " + dxs[c] + "]");
+        dxs.splice(dxs[b], 1); // remove ear tip from vertex index list
+        console.log("dxs after: " + dxs);
+        return;
+      }
+    }
+  }
+  console.log("failed to clip ear!");
+}
+
+// same as ccw/cw test except now we know its ccw & want to see if its convex
+lzr.pn._is_convex = function (a, b, c) {
+  var det = ((b[0] - a[0]) * (c[1] - a[1])) - ((c[0] - a[0]) * (b[1] - a[1]));
+  if (det < 0) return true;
+  return false;
+}
+// --pn
+// ********
+
+// ****************
+// lp -> loop of vertices
+//
+lzr.lp = function () {
+  var lp = this;
+  lp.mn = vec2.create();
+  lp.mx = vec2.create();
+  lp.mndx = 0;
+  lp.vrts = [];
+}
+
+lzr.lp.prototype = {
+
+  constructor: lzr.lp,
+
+  set_mnmx: function () {
+    var lp = this;
+
+    // calculate new min & max
+    lp.mn = lp.vrts[0];
+    lp.mx = lp.vrts[0];
+    lp.mndx = 0;
+    for (var i = 1; i < lp.vrts.length; i++) {
+      var vi = lp.vrts[i];
+      if (lzr.v2.cmp(vi, lp.mn) < 0) {
+        lp.mn = vi;
+        lp.mndx = i;
+      }
+      if (lzr.v2.cmp(vi, lp.mx) > 0) {
+        lp.mx = vi;
+      }
+    }
+  },
+
+  // return list of vertices in ccw (or cw) order
+  ordered_vrts: function (ccw) {
+    var lp = this;
+    if (lp.vrts.length < 2) {
+      return lp.vrts.slice();
+    }
+
+    var vs = [];
+    var i = lp.mndx;
+    while (vs.length < lp.vrts.length - 1) {
+      i++;
+      if (i >= lp.vrts.length) i = 0;
+      vs.push(lp.vrts[i]);
+    }
+
+    // unless loop is ccw & thats what was requested, reverse vertices
+    if (!(lp.is_ccw() && ccw)) {
+      vs.reverse();
+    }
+
+    // add min vertex to beginning & return list
+    vs.unshift(lp.mn);
+    return vs;
+  },
+
+  // https://en.wikipedia.org/wiki/Curve_orientation#Orientation_of_a_simple_polygon
+  is_ccw: function () {
+    var lp = this;
+    if (lp.vrts.length < 3) return false;
+    var dx = lp.mndx - 1;
+    if (dx < 0) dx = lp.vrts.length - 1;
+    var a = lp.vrts[dx];
+    dx++;
+    if (dx >= lp.vrts.length) dx = 0;
+    var b = lp.vrts[dx];
+    dx++;
+    if (dx >= lp.vrts.length) dx = 0;
+    var c = lp.vrts[dx];
+    var det = ((b[0] - a[0]) * (c[1] - a[1])) - ((c[0] - a[0]) * (b[1] - a[1]));
+    if (det < 0) return true;
+    return false;
+  }
+}
+
+lzr.lp.cmp = function(a, b) {
+  return lzr.v2.cmp(a.mn, b.mn);
+}
+// --lp
 // ********

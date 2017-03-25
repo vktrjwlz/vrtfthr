@@ -13,10 +13,10 @@ var sz = vec2.fromValues(256.0, 256.0);
 
 function pwpw() {
   var cnvs = document.getElementById("lzrcnvs");
-  rndrr = new lzrpn.rndrr(cnvs);
+  rndrr = new lzr.rndrr(cnvs);
 
   // create rectangular mesh
-  msh = new lzrpn.msh();
+  msh = new lzr.msh();
   msh.rgba = [1.0, 0.0, 0.0, 0.7]; // reddish
   msh.vertices.push( vec2.clone(mn) );
   msh.vertices.push( vec2.fromValues(mn[0], mn[1] + sz[1]) );
@@ -29,16 +29,18 @@ function pwpw() {
   var mnb = vec2.fromValues(96.0, 128.0);
   var szb = vec2.fromValues(400.0, 600.0);
 
-  var ln = new lzrpn.ln();
-  ln.rgba = [0.0, 1.0, 1.0, 0.7]; // cyanish
-  ln.weight = 24.0;
-  ln.vertices.push( vec2.fromValues(200, 650) );
-  ln.vertices.push( vec2.fromValues(400, 650) );
-  rndrr.mshs.push(ln);
+  var pn = new lzr.pn();
+  pn.rgba = [0.0, 1.0, 0.0, 0.7]; // greenish
+  pn.bndry.vrts.push( vec2.clone(mnb) );
+  pn.bndry.vrts.push( vec2.fromValues(mnb[0], mnb[1] + szb[1]) );
+  pn.bndry.vrts.push( vec2.fromValues(mnb[0] + szb[0], mnb[1] + szb[1]) );
+  pn.bndry.vrts.push( vec2.fromValues(mnb[0] + (2 * szb[0]), mnb[1] + (szb[1]*0.5)) );
+  pn.bndry.vrts.push( vec2.fromValues(mnb[0] + szb[0], mnb[1]) );
+  rndrr.mshs.push(pn);
 
 
 
-  rng = new lzrpn.rng();
+  rng = new lzr.rng();
   rng.rgba = [1.0, 0.0, 0.0, 0.7]; // reddish
   rng.center = vec2.fromValues( 300, 500 );
   rng.radius = 128.0;
@@ -76,7 +78,7 @@ function onMouseDown( event ) {
 
   event.preventDefault();
 
-  var l = new lzrpn.ln();
+  var l = new lzr.ln();
   l.weight = 16;
   l.rgba = [0.0, 1.0, 1.0, 0.7]
   l.vertices.push( vec2.clone(anchorP) );
