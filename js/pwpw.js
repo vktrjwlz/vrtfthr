@@ -28,6 +28,8 @@ function pwpw() {
 
   var mnb = vec2.fromValues(96.0, 128.0);
   var szb = vec2.fromValues(400.0, 600.0);
+  var vmn = vec2.fromValues(100.0, 150.0);
+  var vmx = vec2.fromValues(200.0, 350.0);
 
   var pn = new lzr.pn();
   pn.rgba = [0.0, 1.0, 0.0, 0.7]; // greenish
@@ -36,6 +38,11 @@ function pwpw() {
   pn.bndry.vrts.push( vec2.fromValues(mnb[0] + szb[0], mnb[1] + szb[1]) );
   pn.bndry.vrts.push( vec2.fromValues(mnb[0] + (2 * szb[0]), mnb[1] + (szb[1]*0.5)) );
   pn.bndry.vrts.push( vec2.fromValues(mnb[0] + szb[0], mnb[1]) );
+  var vd = new lzr.lp();
+  vd.vrts.push( vec2.fromValues(mnb[0] + vmn[0], mnb[1] + vmn[1]) );
+  vd.vrts.push( vec2.fromValues(mnb[0] + vmx[0], mnb[1] + vmn[1]) );
+  vd.vrts.push( vec2.fromValues(mnb[0] + vmx[0], mnb[1] + vmx[1]) );
+  pn.vds.push(vd);
   rndrr.mshs.push(pn);
 
 
@@ -49,9 +56,9 @@ function pwpw() {
   rndrr.mshs.push(rng);
 
   window.addEventListener( 'resize', onWindowResize, false );
-  document.addEventListener( 'mousedown', onMouseDown, false );
-  document.addEventListener( 'mousemove', onMouseMove, false );
-  document.addEventListener( 'mouseup', onMouseUp, false );
+  // document.addEventListener( 'mousedown', onMouseDown, false );
+  // document.addEventListener( 'mousemove', onMouseMove, false );
+  // document.addEventListener( 'mouseup', onMouseUp, false );
 
   rndrr.buff(); // build mesh buffers, call after changing meshes
   rndrr.render(); // draw meshes

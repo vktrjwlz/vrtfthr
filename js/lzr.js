@@ -769,13 +769,13 @@ lzr.pn.prototype = {
     pn.bndry.set_mnmx();
     var vs = pn.bndry.ordered_vrts(true); // ccw vrts for boundary
     if (pn.vds.length > 0) {
-      pn.vds.sort(lzr.loop.cmp);
+      pn.vds.sort(lzr.lp.cmp);
       for (var i = 0; i < pn.vds.length; i++) {
         lzr.pn._splice_void(vs, pn.vds[i]);
       }
     }
     console.log("ready to clip ears from vrts: ");
-    console.log(vs);
+    console.log(vs.toString());
 
     // generate triangles by clipping ears
     dxs = [];
@@ -790,7 +790,7 @@ lzr.pn.prototype = {
     }
     trngls.push([dxs[0], dxs[1], dxs[2]]); // add final triangle
 
-    console.log(trngls);
+    console.log(trngls.toString());
 
     // load triangle vertices into position buffer
     pn.vertices = vs;
@@ -805,6 +805,9 @@ lzr.pn.prototype = {
 // TODO - change for algo that works generally
 lzr.pn._splice_void = function (vs, lp) {
 
+  console.log("splicing void loop into ");
+  console.log(vs.toString());
+  console.log(lp);
   if (lp.vrts.length <= 0) return;
 
   // get min void loop vertex
@@ -826,16 +829,25 @@ lzr.pn._splice_void = function (vs, lp) {
     }
   }
 
+  console.log("slicing at " + mndx);
+
   // splice cw loop vertices into list
   var vvs = lp.ordered_vrts(false);
   vvs.push(vv); // add entry void vertex at end again
-  vvs.push(pn.vertices[mndx]); // add entry outer vertex again
-  vs = vs.slice(0, mndx + 1).concat(vvs, vs.slice(mndx + 1));
+  vvs.push(vs[mndx]); // add entry outer vertex again
+  while (vvs.length > 0) {
+    vs.splice(mndx + 1, 0, vvs.pop());
+  }
+  // vs.splice(mndx + 1, 0, vvs.pop());
+  // vs.splice(mndx + 1, 0, vvs.pop());
+  // vs.splice(mndx + 1, 0, vvs.pop());
+
+  console.log("done splicing void: " + vs.toString());
 }
 
 // identify ear, add to triangles list & remove center node from dxs
 lzr.pn._clip_ear = function (trngls, vs, dxs) {
-  console.log("clipping dxs: " + dxs);
+  console.log("clipping dxs: " + dxs.toString());
   if (dxs.length < 4) {
     console.log("cant clip ear from fewer than 4 vertices");
     return;
@@ -861,8 +873,8 @@ lzr.pn._clip_ear = function (trngls, vs, dxs) {
       if (!inside) { // found an ear, clip it!!
         trngls.push([dxs[a], dxs[b], dxs[c]]); // add triangle to list
         console.log("adding ["+ dxs[a] + ", " + dxs[b] + ", " + dxs[c] + "]");
-        dxs.splice(dxs[b], 1); // remove ear tip from vertex index list
-        console.log("dxs after: " + dxs);
+        dxs.splice(b, 1); // remove ear tip from vertex index list
+        console.log("dxs after: " + dxs.toString());
         return;
       }
     }
