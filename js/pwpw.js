@@ -30,6 +30,8 @@ function pwpw() {
   var szb = vec2.fromValues(400.0, 600.0);
   var vmn = vec2.fromValues(100.0, 150.0);
   var vmx = vec2.fromValues(200.0, 350.0);
+  var vbmn = vec2.fromValues(250.0, 200.0);
+  var vbmx = vec2.fromValues(300.0, 500.0);
 
   var pn = new lzr.pn();
   pn.rgba = [0.0, 1.0, 0.0, 0.7]; // greenish
@@ -43,13 +45,18 @@ function pwpw() {
   vd.vrts.push( vec2.fromValues(mnb[0] + vmx[0], mnb[1] + vmn[1]) );
   vd.vrts.push( vec2.fromValues(mnb[0] + vmx[0], mnb[1] + vmx[1]) );
   pn.vds.push(vd);
+  var vd = new lzr.lp();
+  vd.vrts.push( vec2.fromValues(mnb[0] + vbmn[0], mnb[1] + vbmn[1]) );
+  vd.vrts.push( vec2.fromValues(mnb[0] + vbmx[0], mnb[1] + vbmn[1]) );
+  vd.vrts.push( vec2.fromValues(mnb[0] + vbmx[0], mnb[1] + vbmx[1]) );
+  pn.vds.push(vd);
   rndrr.mshs.push(pn);
 
   rndrr.buff();
 
   for (var i = 0; i < pn.vertices.length; i++) {
     var r = new lzr.rng();
-    r.rgba = [1.0, 0.0, i/pn.vertices.length, 0.7]; // reddish
+    r.rgba = [1.0, 0.0, i/pn.vertices.length, 0.5]; // reddish
     r.center = pn.vertices[i];
     r.radius = 16.0;
     r.weight = 6.0;
@@ -64,7 +71,7 @@ function pwpw() {
       if (k >= 3) k = 0;
       var l = new lzr.ln();
       l.weight = 6;
-      l.rgba = [0.0, 0.0, 1.0, 0.7]; // blueish
+      l.rgba = [0.0, 0.0, 1.0, 0.5]; // blueish
       l.vertices.push( pn.vertices[t[j]] );
       l.vertices.push( pn.vertices[t[k]] );
       rndrr.mshs.push( l );

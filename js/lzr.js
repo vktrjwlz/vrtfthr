@@ -199,8 +199,6 @@ lzr.glbfr.prototype = {
       }
     }
 
-    //console.log("vertices: " + vs);
-
     gl.bindBuffer( gl.ARRAY_BUFFER, glbfr.glid );
     gl.bufferData( gl.ARRAY_BUFFER, new Float32Array(vs), gl.STATIC_DRAW );
     return true;
@@ -216,10 +214,7 @@ lzr.glbfr.prototype = {
     var cs = [];
     for (var i = 0; i < numItems; i++) {
       cs = cs.concat( rgba );
-      //cs = cs.concat( [1.0, 0.0, 0.0, 1.0] ); // red vertices for debugging
     }
-
-    //console.log("colors: " + cs);
 
     gl.bindBuffer( gl.ARRAY_BUFFER, glbfr.glid );
     gl.bufferData( gl.ARRAY_BUFFER, new Float32Array(cs), gl.STATIC_DRAW );
@@ -452,8 +447,6 @@ lzr.sg.intersectOrigin = function (out, sga, sgb) {
   if (p == null) return false;
 
   lzr.sg.setOrigin( out, p );
-
-  // console.log( "new origin for sg: ", lzr.sg.stringize(out) );
 
   return true;
 }
@@ -774,8 +767,6 @@ lzr.pn.prototype = {
         lzr.pn._splice_void(vs, pn.vds[i]);
       }
     }
-    console.log("ready to clip ears from vrts: ");
-    console.log(vs.toString());
 
     // generate triangles by clipping ears
     dxs = [];
@@ -784,31 +775,24 @@ lzr.pn.prototype = {
     while (dxs.length > 3) {
       lzr.pn._clip_ear(trngls, vs, dxs);
     }
-    console.log("triangles: " + trngls.length);
-    for (var i = 0; i < trngls.length; i++) {
-      console.log(i + ": " + trngls[i]);
-    }
     trngls.push([dxs[0], dxs[1], dxs[2]]); // add final triangle
-
-    console.log(trngls.toString());
-    console.log(vs.toString());
 
     // load triangle vertices into position buffer
     pn.vertices = vs;
     pn.triangles = trngls;
-    pn.positionBuff.loadTriangles( gl, pn.vertices, pn.triangles );
+    pn.positionBuff.loadTriangles(gl, pn.vertices, pn.triangles);
 
     // load color vertex for each triangle vertex in position buffer
-    pn.colorBuff.loadColor( gl, pn.positionBuff.numItems, pn.rgba );
+    pn.colorBuff.loadColor(gl, pn.positionBuff.numItems, pn.rgba);
   }
 }
 
 // TODO - change for algo that works generally
 lzr.pn._splice_void = function (vs, lp) {
-
-  console.log("splicing void loop " + lp.vrts.toString());
-  console.log("into " + vs.toString());
-  if (lp.vrts.length <= 0) return;
+  if (lp.vrts.length <= 0) {
+    console.log("cant splice empty void loop");
+    return;
+  }
 
   // get min void loop vertex
   lp.set_mnmx();
@@ -829,42 +813,35 @@ lzr.pn._splice_void = function (vs, lp) {
     }
   }
 
-  console.log("slicing at " + mndx);
-
   // splice cw loop vertices into list
   var vvs = lp.ordered_vrts(false);
-  console.log("ordered loop vrts " + vvs.toString());
   vvs.push(vv); // add entry void vertex at end again
   vvs.push(vs[mndx]); // add entry outer vertex again
-
-  console.log("slicing vvs into vs " + vvs.toString());
 
   while (vvs.length > 0) {
     vs.splice(mndx + 1, 0, vvs.pop());
   }
-  // vs.splice(mndx + 1, 0, vvs.pop());
-  // vs.splice(mndx + 1, 0, vvs.pop());
-  // vs.splice(mndx + 1, 0, vvs.pop());
-
-  console.log("done splicing void: " + vs.toString());
 }
 
 // identify ear, add to triangles list & remove center node from dxs
 lzr.pn._clip_ear = function (trngls, vs, dxs) {
-  console.log("clipping dxs: " + dxs.toString());
   if (dxs.length < 4) {
     console.log("cant clip ear from fewer than 4 vertices");
     return;
   }
+
+  // loop thru groups of 3 vertex indices until an ear is found
   for (var i = 0; i < dxs.length; i++) {
     var a = i - 2;
     if (a < 0) a = dxs.length + a;
     var b = i - 1;
     if (b < 0) b = dxs.length + b;
     var c = i;
-    console.log("testing ["+ a + ", " + b + ", " + c + "]");
+
+    // ears must be convex, test assumes vertices a->b->c are ccw
     if (lzr.pn._is_convex(vs[dxs[a]], vs[dxs[b]], vs[dxs[c]])) {
-      // test if any *other* vertices are inside
+
+      // test if any *other* vertices are inside convexity
       var inside = false;
       for (var j = 0; j < vs.length; j++) {
         var v = vs[j];
@@ -876,17 +853,15 @@ lzr.pn._clip_ear = function (trngls, vs, dxs) {
       }
       if (!inside) { // found an ear, clip it!!
         trngls.push([dxs[a], dxs[b], dxs[c]]); // add triangle to list
-        console.log("adding ["+ dxs[a] + ", " + dxs[b] + ", " + dxs[c] + "]");
         dxs.splice(b, 1); // remove ear tip from vertex index list
-        console.log("dxs after: " + dxs.toString());
-        return;
+        return; // topology of remaining vertex indices has changed, return!
       }
     }
   }
   console.log("failed to clip ear!");
 }
 
-// same as ccw/cw test except now we know its ccw & want to see if its convex
+// same as ccw/cw test except now we know a->b->c is ccw & want to see if its convex
 lzr.pn._is_convex = function (a, b, c) {
   var det = ((b[0] - a[0]) * (c[1] - a[1])) - ((c[0] - a[0]) * (b[1] - a[1]));
   if (det < 0) return true;
