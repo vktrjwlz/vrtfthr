@@ -16,15 +16,15 @@ function pwpw() {
   rndrr = new lzr.rndrr(cnvs);
 
   // create rectangular mesh
-  msh = new lzr.msh();
-  msh.rgba = [1.0, 0.0, 0.0, 0.7]; // reddish
-  msh.vertices.push( vec2.clone(mn) );
-  msh.vertices.push( vec2.fromValues(mn[0], mn[1] + sz[1]) );
-  msh.vertices.push( vec2.fromValues(mn[0] + sz[0], mn[1]) );
-  msh.vertices.push( vec2.fromValues(mn[0] + sz[0], mn[1] + sz[1]) );
-  msh.triangles.push( [0, 1, 2] );
-  msh.triangles.push( [1, 3, 2] );
-  rndrr.mshs.push(msh);
+  // msh = new lzr.msh();
+  // msh.rgba = [1.0, 0.0, 0.0, 0.7]; // reddish
+  // msh.vertices.push( vec2.clone(mn) );
+  // msh.vertices.push( vec2.fromValues(mn[0], mn[1] + sz[1]) );
+  // msh.vertices.push( vec2.fromValues(mn[0] + sz[0], mn[1]) );
+  // msh.vertices.push( vec2.fromValues(mn[0] + sz[0], mn[1] + sz[1]) );
+  // msh.triangles.push( [0, 1, 2] );
+  // msh.triangles.push( [1, 3, 2] );
+  // rndrr.mshs.push(msh);
 
   var mnb = vec2.fromValues(96.0, 128.0);
   var szb = vec2.fromValues(400.0, 600.0);
@@ -45,15 +45,39 @@ function pwpw() {
   pn.vds.push(vd);
   rndrr.mshs.push(pn);
 
+  rndrr.buff();
 
+  for (var i = 0; i < pn.vertices.length; i++) {
+    var r = new lzr.rng();
+    r.rgba = [1.0, 0.0, i/pn.vertices.length, 0.7]; // reddish
+    r.center = pn.vertices[i];
+    r.radius = 16.0;
+    r.weight = 6.0;
+    r.segments = 32;
+    rndrr.mshs.push(r);
+  }
 
-  rng = new lzr.rng();
-  rng.rgba = [1.0, 0.0, 0.0, 0.7]; // reddish
-  rng.center = vec2.fromValues( 300, 500 );
-  rng.radius = 128.0;
-  rng.weight = 16.0;
-  rng.segments = 32;
-  rndrr.mshs.push(rng);
+  for (var i = 0; i < pn.triangles.length; i++) {
+    var t = pn.triangles[i];
+    for (var j = 0; j < 3; j++) {
+      var k = j + 1;
+      if (k >= 3) k = 0;
+      var l = new lzr.ln();
+      l.weight = 6;
+      l.rgba = [0.0, 0.0, 1.0, 0.7]; // blueish
+      l.vertices.push( pn.vertices[t[j]] );
+      l.vertices.push( pn.vertices[t[k]] );
+      rndrr.mshs.push( l );
+    }
+  }
+
+  // rng = new lzr.rng();
+  // rng.rgba = [1.0, 0.0, 0.0, 0.7]; // reddish
+  // rng.center = vec2.fromValues( 300, 500 );
+  // rng.radius = 128.0;
+  // rng.weight = 16.0;
+  // rng.segments = 32;
+  // rndrr.mshs.push(rng);
 
   window.addEventListener( 'resize', onWindowResize, false );
   // document.addEventListener( 'mousedown', onMouseDown, false );

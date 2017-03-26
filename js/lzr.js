@@ -791,6 +791,7 @@ lzr.pn.prototype = {
     trngls.push([dxs[0], dxs[1], dxs[2]]); // add final triangle
 
     console.log(trngls.toString());
+    console.log(vs.toString());
 
     // load triangle vertices into position buffer
     pn.vertices = vs;
@@ -805,9 +806,8 @@ lzr.pn.prototype = {
 // TODO - change for algo that works generally
 lzr.pn._splice_void = function (vs, lp) {
 
-  console.log("splicing void loop into ");
-  console.log(vs.toString());
-  console.log(lp);
+  console.log("splicing void loop " + lp.vrts.toString());
+  console.log("into " + vs.toString());
   if (lp.vrts.length <= 0) return;
 
   // get min void loop vertex
@@ -817,11 +817,11 @@ lzr.pn._splice_void = function (vs, lp) {
   // find closest boundary vertex
   var j = 0;
   var mndx = 0;
-  var bv = lp.vrts[0];
+  var bv = vs[0];
   var mndlta = lzr.sg.mag(lzr.sg.fromEnd(bv, vv));
-  while (j < lp.vrts.length - 1) {
+  while (j < vs.length - 1) {
     j++;
-    bv = lp.vrts[j];
+    bv = vs[j];
     var dlta = lzr.sg.mag(lzr.sg.fromEnd(bv, vv));
     if (dlta < mndlta) {
       mndlta = dlta;
@@ -833,8 +833,12 @@ lzr.pn._splice_void = function (vs, lp) {
 
   // splice cw loop vertices into list
   var vvs = lp.ordered_vrts(false);
+  console.log("ordered loop vrts " + vvs.toString());
   vvs.push(vv); // add entry void vertex at end again
   vvs.push(vs[mndx]); // add entry outer vertex again
+
+  console.log("slicing vvs into vs " + vvs.toString());
+
   while (vvs.length > 0) {
     vs.splice(mndx + 1, 0, vvs.pop());
   }
@@ -941,7 +945,7 @@ lzr.lp.prototype = {
     }
 
     // unless loop is ccw & thats what was requested, reverse vertices
-    if (!(lp.is_ccw() && ccw)) {
+    if (lp.is_ccw() !== ccw) {
       vs.reverse();
     }
 
