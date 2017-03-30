@@ -7,13 +7,62 @@ var offset = 0.0;
 var pointerDown = false;
 var anchorP = vec2.fromValues(128.0, 128.0);
 var lastP = vec2.create();
-var mn = vec2.fromValues(48.0, 48.0);
-var sz = vec2.fromValues(256.0, 256.0);
+var mn = vec2.fromValues(50.0, 50.0);
+var sz = vec2.fromValues(600.0, 800.0);
+
+var dlny = null;
 
 
 function pwpw() {
   var cnvs = document.getElementById("lzrcnvs");
   rndrr = new lzr.rndrr(cnvs);
+
+  // create delaunay triangulation
+  dlny = new lzr.dlny(mn, sz);
+  var i = 0;
+  while (i < 10) {
+    var vrt = vec2.fromValues(
+       Math.random() * (dlny.mn[0] + dlny.sz[0] - dlny.mn[0]) + dlny.mn[0],
+       Math.random() * (dlny.mn[1] + dlny.sz[1] - dlny.mn[1]) + dlny.mn[1]);
+    var clst = dlny.pick_closest(vrt);
+    if (clst === null || vec2.dist(vrt, clst) > 30) {
+      dlny.vrts.push(vrt);
+      i++;
+    }
+  }
+  dlny.triangulate();
+
+  // offset delaunay triangles & draw them
+  for (var i = 0; i < dlny.trngls.length; i++) {
+    var trngl = dlny.trngls[i];
+    //trngl.offset(-4.0);
+    //if (!dlny.is_omg(trngl))
+    rndrr.mshs.push(trngl);
+  }
+
+  for (var i = 0; i < dlny.trngls.length; i++) {
+    var trngl = dlny.trngls[i];
+    for (var j = 0; j < 3; j++) {
+      var k = j + 1;
+      if (k >= 3) k = 0;
+      var l = new lzr.ln();
+      l.weight = 6;
+      l.rgba = [0.0, 0.0, 1.0, 0.5]; // blueish
+      l.vertices.push( trngl.vrts[j] );
+      l.vertices.push( trngl.vrts[k] );
+      rndrr.mshs.push( l );
+    }
+  }
+
+  for (var i = 0; i < dlny.vrts.length; i++) {
+    var r = new lzr.rng();
+    r.rgba = [1.0, 0.0, i/dlny.vrts.lngth, 0.5]; // reddish
+    r.center = dlny.vrts[i];
+    r.radius = 16.0;
+    r.weight = 6.0;
+    r.segments = 32;
+    rndrr.mshs.push(r);
+  }
 
   // create rectangular mesh
   // msh = new lzr.msh();
@@ -26,57 +75,57 @@ function pwpw() {
   // msh.triangles.push( [1, 3, 2] );
   // rndrr.mshs.push(msh);
 
-  var mnb = vec2.fromValues(96.0, 128.0);
-  var szb = vec2.fromValues(400.0, 600.0);
-  var vmn = vec2.fromValues(100.0, 150.0);
-  var vmx = vec2.fromValues(200.0, 350.0);
-  var vbmn = vec2.fromValues(250.0, 200.0);
-  var vbmx = vec2.fromValues(300.0, 500.0);
-
-  var pn = new lzr.pn();
-  pn.rgba = [0.0, 1.0, 0.0, 0.7]; // greenish
-  pn.bndry.vrts.push( vec2.clone(mnb) );
-  pn.bndry.vrts.push( vec2.fromValues(mnb[0], mnb[1] + szb[1]) );
-  pn.bndry.vrts.push( vec2.fromValues(mnb[0] + szb[0], mnb[1] + szb[1]) );
-  pn.bndry.vrts.push( vec2.fromValues(mnb[0] + (2 * szb[0]), mnb[1] + (szb[1]*0.5)) );
-  pn.bndry.vrts.push( vec2.fromValues(mnb[0] + szb[0], mnb[1]) );
-  var vd = new lzr.lp();
-  vd.vrts.push( vec2.fromValues(mnb[0] + vmn[0], mnb[1] + vmn[1]) );
-  vd.vrts.push( vec2.fromValues(mnb[0] + vmx[0], mnb[1] + vmn[1]) );
-  vd.vrts.push( vec2.fromValues(mnb[0] + vmx[0], mnb[1] + vmx[1]) );
-  pn.vds.push(vd);
-  var vd = new lzr.lp();
-  vd.vrts.push( vec2.fromValues(mnb[0] + vbmn[0], mnb[1] + vbmn[1]) );
-  vd.vrts.push( vec2.fromValues(mnb[0] + vbmx[0], mnb[1] + vbmn[1]) );
-  vd.vrts.push( vec2.fromValues(mnb[0] + vbmx[0], mnb[1] + vbmx[1]) );
-  pn.vds.push(vd);
-  rndrr.mshs.push(pn);
-
-  rndrr.buff();
-
-  for (var i = 0; i < pn.vertices.length; i++) {
-    var r = new lzr.rng();
-    r.rgba = [1.0, 0.0, i/pn.vertices.length, 0.5]; // reddish
-    r.center = pn.vertices[i];
-    r.radius = 16.0;
-    r.weight = 6.0;
-    r.segments = 32;
-    rndrr.mshs.push(r);
-  }
-
-  for (var i = 0; i < pn.triangles.length; i++) {
-    var t = pn.triangles[i];
-    for (var j = 0; j < 3; j++) {
-      var k = j + 1;
-      if (k >= 3) k = 0;
-      var l = new lzr.ln();
-      l.weight = 6;
-      l.rgba = [0.0, 0.0, 1.0, 0.5]; // blueish
-      l.vertices.push( pn.vertices[t[j]] );
-      l.vertices.push( pn.vertices[t[k]] );
-      rndrr.mshs.push( l );
-    }
-  }
+  // var mnb = vec2.fromValues(96.0, 128.0);
+  // var szb = vec2.fromValues(400.0, 600.0);
+  // var vmn = vec2.fromValues(100.0, 150.0);
+  // var vmx = vec2.fromValues(200.0, 350.0);
+  // var vbmn = vec2.fromValues(250.0, 200.0);
+  // var vbmx = vec2.fromValues(300.0, 500.0);
+  //
+  // var pn = new lzr.pn();
+  // pn.rgba = [0.0, 1.0, 0.0, 0.7]; // greenish
+  // pn.bndry.vrts.push( vec2.clone(mnb) );
+  // pn.bndry.vrts.push( vec2.fromValues(mnb[0], mnb[1] + szb[1]) );
+  // pn.bndry.vrts.push( vec2.fromValues(mnb[0] + szb[0], mnb[1] + szb[1]) );
+  // pn.bndry.vrts.push( vec2.fromValues(mnb[0] + (2 * szb[0]), mnb[1] + (szb[1]*0.5)) );
+  // pn.bndry.vrts.push( vec2.fromValues(mnb[0] + szb[0], mnb[1]) );
+  // var vd = new lzr.lp();
+  // vd.vrts.push( vec2.fromValues(mnb[0] + vmn[0], mnb[1] + vmn[1]) );
+  // vd.vrts.push( vec2.fromValues(mnb[0] + vmx[0], mnb[1] + vmn[1]) );
+  // vd.vrts.push( vec2.fromValues(mnb[0] + vmx[0], mnb[1] + vmx[1]) );
+  // pn.vds.push(vd);
+  // var vd = new lzr.lp();
+  // vd.vrts.push( vec2.fromValues(mnb[0] + vbmn[0], mnb[1] + vbmn[1]) );
+  // vd.vrts.push( vec2.fromValues(mnb[0] + vbmx[0], mnb[1] + vbmn[1]) );
+  // vd.vrts.push( vec2.fromValues(mnb[0] + vbmx[0], mnb[1] + vbmx[1]) );
+  // pn.vds.push(vd);
+  // rndrr.mshs.push(pn);
+  //
+  // rndrr.buff();
+  //
+  // for (var i = 0; i < pn.vertices.length; i++) {
+  //   var r = new lzr.rng();
+  //   r.rgba = [1.0, 0.0, i/pn.vertices.length, 0.5]; // reddish
+  //   r.center = pn.vertices[i];
+  //   r.radius = 16.0;
+  //   r.weight = 6.0;
+  //   r.segments = 32;
+  //   rndrr.mshs.push(r);
+  // }
+  //
+  // for (var i = 0; i < pn.triangles.length; i++) {
+  //   var t = pn.triangles[i];
+  //   for (var j = 0; j < 3; j++) {
+  //     var k = j + 1;
+  //     if (k >= 3) k = 0;
+  //     var l = new lzr.ln();
+  //     l.weight = 6;
+  //     l.rgba = [0.0, 0.0, 1.0, 0.5]; // blueish
+  //     l.vertices.push( pn.vertices[t[j]] );
+  //     l.vertices.push( pn.vertices[t[k]] );
+  //     rndrr.mshs.push( l );
+  //   }
+  // }
 
   // rng = new lzr.rng();
   // rng.rgba = [1.0, 0.0, 0.0, 0.7]; // reddish

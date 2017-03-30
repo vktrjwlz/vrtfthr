@@ -3,7 +3,7 @@
 // * render pns in browser with webgl
 // * pack pns into jbs composed of a sht for each material
 // * export shts as svg
-var lzr = {};
+var lzr = {}; // init lzr namespace
 
 // lzr ontology
 // * pn -> one lazercut pane, optionally with voids
@@ -291,7 +291,7 @@ lzr.sg.create = function () {
   return out;
 }
 
-lzr.sg.fromDelta = function (orig, dlta) {
+lzr.sg.from_dlta = function (orig, dlta) {
   var out = new glMatrix.ARRAY_TYPE(4);
   out[0] = orig[0];
   out[1] = orig[1];
@@ -300,7 +300,7 @@ lzr.sg.fromDelta = function (orig, dlta) {
   return out;
 }
 
-lzr.sg.fromEnd = function (orig, end) {
+lzr.sg.from_end = function (orig, end) {
   var out = new glMatrix.ARRAY_TYPE(4);
   var d = vec2.create();
   vec2.sub(d, end, orig);
@@ -328,13 +328,13 @@ lzr.sg.copy = function (out, sg) {
   return out;
 }
 
-lzr.sg.origin = function (ouv, sg) {
+lzr.sg.orgn = function (ouv, sg) {
   ouv[0] = sg[0];
   ouv[1] = sg[1];
   return ouv;
 }
 
-lzr.sg.setOrigin = function (out, p) {
+lzr.sg.set_orgn = function (out, p) {
   out[0] = p[0];
   out[1] = p[1];
   return out;
@@ -354,19 +354,19 @@ lzr.sg.setDelta = function (out, p) {
 
 lzr.sg.end = function (ouv, sg) {
   var o = vec2.create();
-  lzr.sg.origin( o, sg );
+  lzr.sg.orgn( o, sg );
   var d = vec2.create();
   lzr.sg.delta( d, sg );
   vec2.add( ouv, o, d );
   return ouv;
 }
 
-lzr.sg.setEnd = function (out, p) {
+lzr.sg.set_end = function (out, p) {
 
   // get delta from origin of out to p end point vec2
   var o = vec2.create()
   var d = vec2.create();
-  lzr.sg.origin( o, out );
+  lzr.sg.orgn( o, out );
   vec2.sub( d, p, o );
 
   // set delta component of out sgment
@@ -386,9 +386,9 @@ lzr.sg.mag = function(sg) {
 
 
 // test whether given point is left of segment
-lzr.sg.isLeft = function (sg, p) { // vec2 p
+lzr.sg.is_left = function (sg, p) { // vec2 p
   var a = vec2.create();
-  lzr.sg.origin( a, sg );
+  lzr.sg.orgn( a, sg );
   var b = vec2.create();
   lzr.sg.end( b, sg );
   return (((b[0]-a[0])*(p[1]-a[1])) - ((b[1]-a[1])*(p[0]-a[0]))) < 0;
@@ -402,7 +402,7 @@ lzr.sg.isLeft = function (sg, p) { // vec2 p
 // 2 -> region intersects line
 lzr.sg.inRadius = function (sg, p, r) { // vec2 p, float r
   if (lzr.sg.distance(sg, p) < r) return 2;
-  if (lzr.sg.isLeft(sg, p)) return 1;
+  if (lzr.sg.is_left(sg, p)) return 1;
   return 0;
 }
 
@@ -414,14 +414,14 @@ lzr.sg.intersect = function (ouv, sga, sgb) { // lzr.seg sg
   // B = x1 - x2
   // C = A*x1 + B*y1
   var s1 = vec2.create();
-  lzr.sg.origin( s1, sga );
+  lzr.sg.orgn( s1, sga );
   var e1 = vec2.create();
   lzr.sg.end( e1, sga );
   var a1 = e1[1] - s1[1];
   var b1 = s1[0] - e1[0];
   var c1 = (a1 * s1[0]) + (b1 * s1[1]);
   var s2 = vec2.create();
-  lzr.sg.origin( s2, sgb );
+  lzr.sg.orgn( s2, sgb );
   var e2 = vec2.create();
   lzr.sg.end( e2, sgb );
   var a2 = e2[1] - s2[1];
@@ -439,20 +439,20 @@ lzr.sg.intersect = function (ouv, sga, sgb) { // lzr.seg sg
 }
 
 // set origin of out seg to intersection of seg sg and other seg o
-lzr.sg.intersectOrigin = function (out, sga, sgb) {
+lzr.sg.intersect_orgn = function (out, sga, sgb) {
 
   var p = vec2.create();
   lzr.sg.intersect( p, sga, sgb );
 
   if (p == null) return false;
 
-  lzr.sg.setOrigin( out, p );
+  lzr.sg.set_orgn( out, p );
 
   return true;
 }
 
 // set origin and delta of out sg to intersections of sga & om and sg & on
-lzr.sg.intersectInterval = function (out, sga, sgb, sgc) { // lzr.sg
+lzr.sg.intersect_intrvl = function (out, sga, sgb, sgc) { // lzr.sg
   var p = vec2.create();
   lzr.sg.intersect(p, sga, sgb);
   var q = vec2.create();
@@ -461,10 +461,10 @@ lzr.sg.intersectInterval = function (out, sga, sgb, sgc) { // lzr.sg
   if (p === null || q === null) return false;
 
   // set origin
-  lzr.sg.setOrigin( out, p );
+  lzr.sg.set_orgn( out, p );
 
   // set delta from p -> q
-  lzr.sg.setEnd( out, q );
+  lzr.sg.set_end( out, q );
 
   return true;
 }
@@ -472,7 +472,7 @@ lzr.sg.intersectInterval = function (out, sga, sgb, sgc) { // lzr.sg
 // project vec2 p onto sg sg and set out vec2 ouv
 lzr.sg.project = function (ouv, p, sg) { // vec2 ouv, p / lzr.sg sg
   var a = vec2.create();
-  vec2.sub( a, p, lzr.sg.origin(sg) ); // a is vector from origin to p
+  vec2.sub( a, p, lzr.sg.orgn(sg) ); // a is vector from origin to p
 
   // project a onto delta vector
   var b = vec2.clone( lzr.sg.delta(sg) );
@@ -480,7 +480,7 @@ lzr.sg.project = function (ouv, p, sg) { // vec2 ouv, p / lzr.sg sg
   vec2.scalar( b, vec2.dot(a, b) );
 
   // add vector b to origin to get new point projected onto sgment
-  vec2.add( out, lzr.sg.origin(sg), b );
+  vec2.add( out, lzr.sg.orgn(sg), b );
   return out;
 }
 
@@ -493,7 +493,7 @@ lzr.sg.distance = function (sg, p) { // vec2 p
 }
 
 // reflect delta vec2 p across delta of sg sg and assign to vec2 ouv
-lzr.sg.reflectDelta = function (ouv, p, sg) {
+lzr.sg.reflect_dlta = function (ouv, p, sg) {
   var a = vec2.clone( lzr.sg.delta(sg) );
   vec2.normalize( a, a );
   vec2.scalar( a, vec2.dot(p, a) ); // a is p projected onto sg
@@ -509,21 +509,21 @@ lzr.sg.reflect = function (out, sg, msg) { // lzr.sg out, sg
 
     // get offset vectors to start and end of sgment from start of this sg
     var a = vec2.create();
-    vec2.sub( a, lzr.sg.origin(sg), lzr.sg.origin(msg) );
+    vec2.sub( a, lzr.sg.orgn(sg), lzr.sg.orgn(msg) );
     var b = vec2.create();
-    vec2.sub( b, lzr.sg.end(sg), lzr.sg.origin(msg) );
+    vec2.sub( b, lzr.sg.end(sg), lzr.sg.orgn(msg) );
 
     // reflect offset vectors across this segment
-    lzr.sg.reflectDelta( a, a, sg );
-    lzr.sg.reflectDelta( b, b, sg );
+    lzr.sg.reflect_dlta( a, a, sg );
+    lzr.sg.reflect_dlta( b, b, sg );
 
     // add to origin vector
-    vec2.add( a, a, lzr.sg.origin(sg) );
-    vec2.add( b, b, lzr.sg.origin(sg) );
+    vec2.add( a, a, lzr.sg.orgn(sg) );
+    vec2.add( b, b, lzr.sg.orgn(sg) );
 
     // set out sg origin and delta
-    lzr.sg.setOrigin( out, a );
-    lzr.sg.setEnd( out, b );
+    lzr.sg.set_orgn( out, a );
+    lzr.sg.set_end( out, b );
 
     return out;
   },
@@ -532,18 +532,18 @@ lzr.sg.offset = function (out, sg, n) { // float n
 
     // get orthogonal normalized delta vector and multiply by offset distance
     var nrml = vec2.create();
-    lzr.sg.orthoNorm(nrml, sg);
+    lzr.sg.ortho_nrml(nrml, sg);
     vec2.scale(nrml, nrml, n);
 
     // copy sg sg to out sg and offset out origin by offset vec2 a
     lzr.sg.copy(out, sg);
     var nwo = vec2.create();
-    lzr.sg.origin(nwo, out);
+    lzr.sg.orgn(nwo, out);
     vec2.add(nwo, nrml, nwo);
-    lzr.sg.setOrigin(out, nwo);
+    lzr.sg.set_orgn(out, nwo);
   },
 
-lzr.sg.qRot = function (out, sg) { // calc quarter rotation of delta vec
+lzr.sg.qrot = function (out, sg) { // calc quarter rotation of delta vec
   var dlta = vec2.create();
   lzr.sg.dlta( dlta, sg );
   lzr.sg.copy( out, sg );
@@ -551,19 +551,19 @@ lzr.sg.qRot = function (out, sg) { // calc quarter rotation of delta vec
   lzr.sg.setDelta( out, dlta );
 }
 
-lzr.sg.orthoNorm = function (nrml, sg) { // calc normal orthogonal to segment
+lzr.sg.ortho_nrml = function (nrml, sg) { // calc normal orthogonal to segment
 
   // generate normal from segment delta
   lzr.sg.delta(nrml, sg); // set normal to dlta component of segment
   vec2.normalize(nrml, nrml);
-  lzr.v2.qRot(nrml, nrml);
+  lzr.v2.qrot(nrml, nrml);
 
   // if normal is to left of segment flip it
   var n = vec2.clone(nrml);
   var orig = vec2.create();
-  lzr.sg.origin(orig, sg);
+  lzr.sg.orgn(orig, sg);
   vec2.add(n, n, orig);
-  if (lzr.sg.isLeft(sg, n)) {
+  if (lzr.sg.is_left(sg, n)) {
     lzr.v2.flip(nrml, nrml);
   }
 }
@@ -574,7 +574,7 @@ lzr.sg.orthoNorm = function (nrml, sg) { // calc normal orthogonal to segment
 // vect2 util funcs
 lzr.EPSILON = 0.01
 lzr.v2 = {}
-lzr.v2.qRot = function (ouv, v) { // quarter rotation clockwise
+lzr.v2.qrot = function (ouv, v) { // quarter rotation clockwise
   vec2.set(ouv, v[1], -v[0]);
 }
 lzr.v2.flip = function (ouv, v) { // flip vector
@@ -591,21 +591,21 @@ lzr.v2.cmp = function (a, b) {
   }
   return 0;
 }
-// barycentric triangle interior test
-// http://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
-lzr.v2.in_triangle = function (v, a, b, c) {
-    var s = a[1] * c[0] - a[0] * c[1] + (c[1] - a[1]) * v[0] + (a[0] - c[0]) * v[1];
-    var t = a[0] * b[1] - a[1] * b[0] + (a[1] - b[1]) * v[0] + (b[0] - a[0]) * v[1];
-
-    if ((s < 0) != (t < 0)) return false;
-
-    var area = -b[1] * c[0] + a[1] * (c[0] - b[0]) + a[0] * (b[1] - c[1]) + b[0] * c[1];
-    if (area < 0.0) {
-        s = -s;
-        t = -t;
-        area = -area;
+lzr.v2.lst_contains = function (lst, v) {
+  for (var i = 0; i < lst.length; i++) {
+    if (lzr.v2.cmp(lst[i], v) === 0) return true;
+  }
+  return false;
+}
+// remove first instance of vector from list and return index
+lzr.v2.lst_remove = function (lst, v) {
+  for (var i = 0; i < lst.length; i++) {
+    if (lzr.v2.cmp(lst[i], v) === 0) {
+      lst.splice(i, 1);
+      return i;
     }
-    return s > 0 && t > 0 && (s + t) <= area;
+  }
+  return -1;
 }
 // --util
 // ********
@@ -637,7 +637,7 @@ lzr.ln.prototype = {
     var wts = []; // weighted triangles
 
     // generate segment from vertices
-    var sg = lzr.sg.fromEnd(ln.vertices[0], ln.vertices[1]);
+    var sg = lzr.sg.from_end(ln.vertices[0], ln.vertices[1]);
 
     // TODO: end caps
 
@@ -650,10 +650,10 @@ lzr.ln.prototype = {
     // build weighted vertices
     var wv = vec2.create();
 
-    lzr.sg.origin(wv, sga);
+    lzr.sg.orgn(wv, sga);
     wvs.push(vec2.clone(wv));
 
-    lzr.sg.origin(wv, sgb);
+    lzr.sg.orgn(wv, sgb);
     wvs.push(vec2.clone(wv));
 
     lzr.sg.end(wv, sga);
@@ -802,11 +802,11 @@ lzr.pn._splice_void = function (vs, lp) {
   var j = 0;
   var mndx = 0;
   var bv = vs[0];
-  var mndlta = lzr.sg.mag(lzr.sg.fromEnd(bv, vv));
+  var mndlta = lzr.sg.mag(lzr.sg.from_end(bv, vv));
   while (j < vs.length - 1) {
     j++;
     bv = vs[j];
-    var dlta = lzr.sg.mag(lzr.sg.fromEnd(bv, vv));
+    var dlta = lzr.sg.mag(lzr.sg.from_end(bv, vv));
     if (dlta < mndlta) {
       mndlta = dlta;
       mndx = j;
@@ -846,7 +846,8 @@ lzr.pn._clip_ear = function (trngls, vs, dxs) {
       for (var j = 0; j < vs.length; j++) {
         var v = vs[j];
         if (v !== vs[a] && v !== vs[b] && v !== vs[c]) {
-          if (lzr.v2.in_triangle(v, vs[dxs[a]], vs[dxs[b]], vs[dxs[c]])) {
+          var trngl = new lzr.trngl(vs[dxs[a]], vs[dxs[b]], vs[dxs[c]]);
+          if (trngl.contains(v)) {
             inside = true;
           }
         }
@@ -952,4 +953,432 @@ lzr.lp.cmp = function(a, b) {
   return lzr.v2.cmp(a.mn, b.mn);
 }
 // --lp
+// ********
+
+// ****************
+// trngl -> triangle geometry
+//
+lzr.trngl = function (a, b, c) {
+  var trngl = this;
+  trngl.vrts = [ a, b, c ];
+  trngl.rgba = [0, 0, 1, 0.3];
+  trngl.colorBuff = new lzr.glbfr();
+  trngl.positionBuff = new lzr.glbfr();
+
+  trngl.ccwize();
+}
+
+lzr.trngl.prototype = {
+
+  constructor: lzr.trngl,
+
+  render: lzr.msh.prototype.render,
+
+  toString: function () {
+    var trngl = this;
+    return "trngl( " + trngl.vrts[0].toString() + ", "
+                     + trngl.vrts[1].toString() + ", "
+                     + trngl.vrts[2].toString() + " )";
+  },
+
+  cmp: function (otrngl) {
+    var trngl = this;
+    for (var i = 0; i < 3; i++) {
+      var d = lzr.v2.cmp(trngl.vrts[i], otrngl.vrts[i]);
+      if (d !== 0) return d;
+    }
+    return 0;
+  },
+
+  ccwize: function () {
+    var trngl = this;
+    if (trngl.vrts.length !== 3) return false;
+
+    var a = trngl.vrts[0];
+    var b = trngl.vrts[1];
+    var c = trngl.vrts[2];
+
+    // if not ccw flop second 2 nodes
+    if (((b[0] - a[0]) * (c[1] - a[1])) - ((c[0] - a[0]) * (b[1] - a[1])) > 0) {
+      var tmp_vrt = trngl.vrts[1];
+      trngl.vrts[1] = trngl.vrts[2];
+      trngl.vrts[2] = tmp_vrt;
+    }
+    return true;
+  },
+
+  // set position of passed vector to geometric center of triangle
+  get_center: function (ouv) {
+    var trngl = this;
+
+    vec2.add(ouv, trngl.vrts[0], trng.vrts[1]);
+    vec2.add(ouv, ouv, trngl.vrts[2]);
+    vec2.scale(ouv, ouv, 1.0/3.0);
+  },
+
+  // barycentric triangle interior test
+  // http://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
+  contains: function (vrt) {
+    var trngl = this;
+
+    var a = trngl.vrts[0];
+    var b = trngl.vrts[1];
+    var c = trngl.vrts[2];
+
+    var s = a[1] * c[0] - a[0] * c[1] + (c[1] - a[1]) * vrt[0] + (a[0] - c[0]) * vrt[1];
+    var t = a[0] * b[1] - a[1] * b[0] + (a[1] - b[1]) * vrt[0] + (b[0] - a[0]) * vrt[1];
+
+    if ((s < 0) != (t < 0)) return false;
+
+    var area = -b[1] * c[0] + a[1] * (c[0] - b[0]) + a[0] * (b[1] - c[1]) + b[0] * c[1];
+    if (area < 0.0) {
+        s = -s;
+        t = -t;
+        area = -area;
+    }
+    return s > 0 && t > 0 && (s + t) <= area;
+  },
+
+  // split triangle into 3 triangles at vertex
+  // assumes triangle contains vertex
+  split:  function (vrt) {
+    var trngl = this;
+    if (trngl.vrts.length < 3) {
+      console.log("cant split triangle with fewer than 3 vertices!");
+      console.log(trngl);
+      return [];
+    }
+    var p = trngl.vrts[0];
+    var q = trngl.vrts[1];
+    var r = trngl.vrts[2];
+
+    // break this triangle into 3 new triangles using the added
+    // vertex as the common vertex between all three
+    return [
+      new lzr.trngl( vrt, p, q ),
+      new lzr.trngl( vrt, q, r ),
+      new lzr.trngl( vrt, r, p ),
+    ];
+  },
+
+  get_crcl: function () {
+    var trngl = this;
+    if (trngl.vrts.length < 3) return null;
+
+    var crcl = new lzr.crcl();
+    if (!crcl.set(trngl.vrts[0], trngl.vrts[1], trngl.vrts[2])) return null;
+    return crcl;
+  },
+
+  crcl_contains: function (vrt) {
+    var trngl = this;
+    var crcl = trngl.get_crcl();
+
+    if (crcl === null) return false;
+
+    return crcl.contains(vrt);
+  },
+
+  // offset edges of triangle parallel to current egdges
+  offset: function (s) {
+    var trngl = this;
+    if (trngl.vrts.length < 3) return false;
+
+    // generate segments of triangle & offset
+    var sgs = [];
+    for (var i = 0; i < 3; i++) {
+      var j = i - 1;
+      if (j < 0) j = 2;
+      var sg = lzr.sg.from_end(trngl.vrts[j], trngl.vrts[i]);
+      lzr.sg.offset(sg, sg, s);
+      sgs.push(sg);
+    }
+
+    // intersect segment origins with previous segment & set triangle vertices
+    for (i = 0; i < 3; i++) {
+      var j = i - 1;
+      if (j < 0) j = 2;
+      lzr.sg.intersect(trngl.vrts[i], sgs[i], sgs[j]);
+    }
+
+    return true;
+  },
+
+  buff: function (gl) {
+    if (this.vrts.length != 3) {
+      console.log("lzr.trngl doesnt have 3 vertices!")
+      return;
+    }
+
+    // build triangles
+    var ts = [ [0, 1, 2] ];
+
+    // write data to buffers
+    this.positionBuff.loadTriangles( gl, this.vrts, ts );
+    this.colorBuff.loadColor( gl, this.positionBuff.numItems, this.rgba );
+  }
+}
+// --trngl
+// ********
+
+// ****************
+// crcl -> circle geometry
+//
+lzr.crcl = function () {
+  this.cntr = null;
+  this.rad = null;
+}
+
+lzr.crcl.prototype = {
+
+  constructor: lzr.crcl,
+
+  // set circle from 3 points of a triangle
+  set: function (a, b, c) {
+    var crcl = this;
+
+    // two slopes from points
+    var s1 = (a[1]-b[1]) / (a[0]-b[0]);
+    var s2 = (b[1]-c[1]) / (b[0]-c[0]);
+    var x;
+    var y;
+
+    // make sure that the points aren't in a line
+    if (s1 === s2) return false;
+
+    // center x
+    x = (s1*s2*(c[1]-a[1])+(s1*(b[0]+c[0]))-(s2*(a[0]+b[0]))) / (2*(s1-s2));
+
+    // center y
+    y = (-1 / s1 * (x-(a[0]+b[0]) / 2)) + ((a[1]+b[1]) / 2);
+
+    // set center and radius
+    crcl.cntr = vec2.fromValues( x, y );
+    crcl.rad = vec2.dist( crcl.cntr, b );
+
+    return true;
+  },
+
+  // test if vertex falls inside of circle
+  contains: function (vrt) {
+    var crcl = this;
+    if (crcl.cntr === null) return false;
+    return vec2.dist(crcl.cntr, vrt) < (this.radius + lzr.EPSILON);
+  }
+}
+// --crcl
+// ********
+
+
+// ****************
+// dlny -> generate delaunay triangulation over a set of vertices
+//
+lzr.dlny = function (mn, sz) {
+  var dlny = this;
+  dlny.mn = vec2.clone(mn); // min coord vector
+  dlny.sz = vec2.clone(sz); // size delta vector
+  dlny.omgs = [ // set omega vertices from min & size vectors
+    vec2.clone(mn),
+    vec2.fromValues(mn[0] + sz[0], mn[1]),
+    vec2.fromValues(mn[0], mn[1] + sz[1]),
+    vec2.fromValues(mn[0] + sz[0], mn[1] + sz[1]),
+  ];
+  dlny.vrts = dlny.omgs.slice();
+  dlny.trngls = null;
+}
+
+lzr.dlny.prototype = {
+
+  constructor: lzr.dlny,
+
+  // find closest non-omega vertex to given vertex
+  pick_closest: function (vrt) {
+    var dlny = this;
+
+    // check that there are more than omega vertices
+    if (dlny.vrts.length - dlny.omgs.length < 1) return null;
+
+    var i = dlny.omgs.length;
+    var mn_vrt = dlny.vrts[i];
+    var mn_dlta = vec2.dist(vrt, mn_vrt);
+    while (i < dlny.vrts.length - 1) {
+      i++;
+      var nxt_vrt = dlny.vrts[i];
+      var nxt_dlta = vec2.dist(vrt, nxt_vrt);
+      if (nxt_dlta < mn_dlta) {
+        mn_vrt = nxt_vrt;
+        mn_dlta = nxt_dlta;
+      }
+    }
+    return mn_vrt;
+  },
+
+  get_adjacent: function (trngl, vrt) {
+    var dlny = this;
+
+    var match = trngl.vrts.slice();
+
+    if (lzr.v2.lst_remove(match, vrt) < 0) {
+      console.log("couldnt find adjacent: vertex not in triangle!");
+      return null;
+    }
+
+    var p = match.pop();
+    var q = match.pop();
+
+    for (var i =0; i < dlny.trngls.length; i++) {
+      var otrngl = dlny.trngls[i];
+      if (trngl != otrngl
+          && lzr.v2.lst_contains(otrngl.vrts, p)
+          && lzr.v2.lst_contains(otrngl.vrts, q))
+        return otrngl;
+    }
+
+    //console.log( "couldnt find adjacent: no matching triangle!" );
+
+    // no adjacent and opposite triangle
+    return null;
+  },
+
+  // return triangle containing vertex
+  get_containing_trngl: function (vrt) {
+    var dlny = this;
+
+    for (var i =0; i < dlny.trngls.length; i++) {
+      var t = dlny.trngls[i];
+      if (t.contains(vrt)) {
+
+        // console.log( t.nodes[0].pos, t.nodes[1].pos, t.nodes[2].pos, " contains ", node.pos );
+
+        return t;
+      }
+    }
+    return null;
+  },
+
+  //
+  validate_edg: function (trngl, vrt) {
+    var dlny = this;
+
+    var adj = dlny.get_adjacent(trngl, vrt);
+
+    if (adj === null) {
+      //console.log( "cant validate: adjacent is null!" )
+      return false;
+    }
+
+    // adjacent branch shouldnt be in circumscribed circle
+    if (adj.crcl_contains(vrt)) {
+      //println("flipping!");
+
+      // flip the adjacent edge and revalidate the two new faces
+      if (!lzr.dlny.flip_trngls(adj, trngl)) {
+        console.log( "failed to flip!" );
+        return false;
+      }
+      this.validate_edg(trngl, vrt);
+      this.validate_edg(adj, vrt);
+    }
+    return true;
+  },
+
+  // determine if this triangle contains an omega vertex
+  is_omg: function (trngl) {
+    var dlny = this;
+
+    for (var i = 0; i < dlny.omgs.length; i++) {
+      var ovrt = dlny.omgs[i];
+      if (lzr.v2.lst_contains(trngl.vrts, ovrt)) return true;
+    }
+    return false;
+  },
+
+  triangulate: function () {
+    var dlny = this;
+    dlny.trngls = []; // reset triangles list
+
+    //console.log( "triangulating!" );
+
+    // add the first two omega triangles covering dlny space
+    dlny.trngls.push(
+      new lzr.trngl(dlny.vrts[0], dlny.vrts[2], dlny.vrts[1]));
+    dlny.trngls.push(
+      new lzr.trngl(dlny.vrts[1], dlny.vrts[2], dlny.vrts[3]));
+
+    // incrementally add all the nodes
+    for (var i = dlny.omgs.length; i < dlny.vrts.length; i++) {
+      var vrt = dlny.vrts[i];
+
+      //console.log( i, "triangulating node ", node.dex, node.pos );
+
+      // find the triangle that this node is inside of
+      var trngl = dlny.get_containing_trngl(vrt);
+      if (trngl === null) {
+        console.log( "couldnt get containing triangle for vertex ", i, vrt );
+        return false;
+      }
+
+      // pretend its always inside the triangle
+      // (since technically it could be on the edge)
+      if (true) {
+
+        // remove the triangle that is getting broken up
+        var dx = dlny.trngls.indexOf(trngl);
+        if (dx >= 0) dlny.trngls.splice( dx, 1 );
+
+        var nwts = trngl.split(vrt);
+        if (nwts.length === 3) {
+
+          // add new triangles to list
+          dlny.trngls = dlny.trngls.concat(nwts);
+
+          // make sure each face is valid
+          for (var j = 0; j < nwts.length; j++) {
+            dlny.validate_edg(nwts[j], vrt);
+          }
+        }
+      }
+      else {} // on the edge
+    }
+
+    return true;
+  }
+}
+
+// flip two triangles sharing an edge into new triangles sharing opposite edge
+lzr.dlny.flip_trngls = function (atrngl, btrngl) {
+
+  // clone vertices lists
+  var avrts = atrngl.vrts.slice();
+  var bvrts = btrngl.vrts.slice();
+  var common = [];
+
+  // remove common vertices
+  // loop over original atrngl vertices as we are changing avrts list
+  for (var i = 0; i < atrngl.vrts.length; i++) {
+    var vrt = atrngl.vrts[i];
+    if (lzr.v2.lst_remove(bvrts, vrt) < 0) {
+      common.push(vrt);
+      lzr.v2.lst_remove(avrts, vrt);
+    }
+  }
+
+  // there should be 2 nodes in common
+  if (common.length != 2) return false;
+
+  // copy remaining unique nodes and split common
+  avrts.push( bvrts[0] );
+  bvrts.push( avrts[0] );
+  avrts.push( common.pop() );
+  bvrts.push( common.pop() );
+
+  // replace nodes lists with new lists and ccwize
+  atrngl.vrts = avrts;
+  btrngl.vrts = bvrts;
+  if (!atrngl.ccwize()) return false;
+  if (!btrngl.ccwize()) return false;
+
+  return true;
+}
+// --dlny
 // ********
