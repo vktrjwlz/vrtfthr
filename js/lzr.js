@@ -981,6 +981,16 @@ lzr.trngl.prototype = {
                      + trngl.vrts[2].toString() + " )";
   },
 
+  clone: function () {
+    var trngl = this;
+    if (trngl.vrts.length !== 3) return null;
+    var nwtrngl = new lzr.trngl(
+      vec2.clone(trngl.vrts[0]),
+      vec2.clone(trngl.vrts[1]),
+      vec2.clone(trngl.vrts[2]));
+    return nwtrngl;
+  },
+
   cmp: function (otrngl) {
     var trngl = this;
     for (var i = 0; i < 3; i++) {
@@ -1066,7 +1076,10 @@ lzr.trngl.prototype = {
     if (trngl.vrts.length < 3) return null;
 
     var crcl = new lzr.crcl();
-    if (!crcl.set(trngl.vrts[0], trngl.vrts[1], trngl.vrts[2])) return null;
+    if (!crcl.set(trngl.vrts[0], trngl.vrts[1], trngl.vrts[2])) {
+      console.log("failed to set circle from triangle " + trngl.vrts);
+      return null;
+    }
     return crcl;
   },
 
@@ -1074,7 +1087,11 @@ lzr.trngl.prototype = {
     var trngl = this;
     var crcl = trngl.get_crcl();
 
-    if (crcl === null) return false;
+    if (crcl === null) {
+      console.log("failed to get circle for triangle!");
+      console.log(trngl);
+      return false;
+    }
 
     return crcl.contains(vrt);
   },
@@ -1133,28 +1150,67 @@ lzr.crcl.prototype = {
 
   constructor: lzr.crcl,
 
+  toString: function () {
+    var crcl = this;
+
+    return "crcl( (" + crcl.cntr[0] + " " + crcl.cntr[1] + ") " + crcl.rad + " )";
+  },
+
   // set circle from 3 points of a triangle
+  // https://gist.github.com/mutoo/5617691
   set: function (a, b, c) {
     var crcl = this;
 
-    // two slopes from points
-    var s1 = (a[1]-b[1]) / (a[0]-b[0]);
-    var s2 = (b[1]-c[1]) / (b[0]-c[0]);
-    var x;
-    var y;
+    var ax = a[0],
+        ay = a[1],
+        bx = b[0],
+        by = b[1],
+        cx = c[0],
+        cy = c[1],
+        fabsy1y2 = Math.abs(ay - by),
+        fabsy2y3 = Math.abs(by - cy),
+        xc, yc, m1, m2, mx1, mx2, my1, my2, dx, dy;
 
-    // make sure that the points aren't in a line
-    if (s1 === s2) return false;
+    /* Check for coincident points */
+    if(fabsy1y2 < lzr.EPSILON && fabsy2y3 < lzr.EPSILON) {
+      console.log("Eek! Coincident points!");
+      return false;
+    }
 
-    // center x
-    x = (s1*s2*(c[1]-a[1])+(s1*(b[0]+c[0]))-(s2*(a[0]+b[0]))) / (2*(s1-s2));
+    if(fabsy1y2 < lzr.EPSILON) {
+      m2  = -((cx - bx) / (cy - by));
+      mx2 = (bx + cx) / 2.0;
+      my2 = (by + cy) / 2.0;
+      xc  = (bx + ax) / 2.0;
+      yc  = m2 * (xc - mx2) + my2;
+    }
 
-    // center y
-    y = (-1 / s1 * (x-(a[0]+b[0]) / 2)) + ((a[1]+b[1]) / 2);
+    else if(fabsy2y3 < lzr.EPSILON) {
+      m1  = -((bx - ax) / (by - ay));
+      mx1 = (ax + bx) / 2.0;
+      my1 = (ay + by) / 2.0;
+      xc  = (cx + bx) / 2.0;
+      yc  = m1 * (xc - mx1) + my1;
+    }
 
-    // set center and radius
-    crcl.cntr = vec2.fromValues( x, y );
-    crcl.rad = vec2.dist( crcl.cntr, b );
+    else {
+      m1  = -((bx - ax) / (by - ay));
+      m2  = -((cx - bx) / (cy - by));
+      mx1 = (ax + bx) / 2.0;
+      mx2 = (bx + cx) / 2.0;
+      my1 = (ay + by) / 2.0;
+      my2 = (by + cy) / 2.0;
+      xc  = (m1 * mx1 - m2 * mx2 + my2 - my1) / (m1 - m2);
+      yc  = (fabsy1y2 > fabsy2y3) ?
+      m1 * (xc - mx1) + my1 :
+      m2 * (xc - mx2) + my2;
+    }
+
+    dx = bx - xc;
+    dy = by - yc;
+
+    crcl.cntr = vec2.fromValues(xc, yc);
+    crcl.rad = Math.sqrt((dx * dx) + (dy * dy));
 
     return true;
   },
@@ -1162,8 +1218,12 @@ lzr.crcl.prototype = {
   // test if vertex falls inside of circle
   contains: function (vrt) {
     var crcl = this;
-    if (crcl.cntr === null) return false;
-    return vec2.dist(crcl.cntr, vrt) < (this.radius + lzr.EPSILON);
+
+    if (crcl.cntr === null || crcl.rad === null) {
+      console.log("cant check containment for uninitialized circle");
+      return false;
+    }
+    return vec2.dist(crcl.cntr, vrt) < (crcl.rad + lzr.EPSILON);
   }
 }
 // --crcl
@@ -1226,15 +1286,13 @@ lzr.dlny.prototype = {
     var p = match.pop();
     var q = match.pop();
 
-    for (var i =0; i < dlny.trngls.length; i++) {
+    for (var i = 0; i < dlny.trngls.length; i++) {
       var otrngl = dlny.trngls[i];
       if (trngl != otrngl
           && lzr.v2.lst_contains(otrngl.vrts, p)
           && lzr.v2.lst_contains(otrngl.vrts, q))
         return otrngl;
     }
-
-    //console.log( "couldnt find adjacent: no matching triangle!" );
 
     // no adjacent and opposite triangle
     return null;
@@ -1247,9 +1305,6 @@ lzr.dlny.prototype = {
     for (var i =0; i < dlny.trngls.length; i++) {
       var t = dlny.trngls[i];
       if (t.contains(vrt)) {
-
-        // console.log( t.nodes[0].pos, t.nodes[1].pos, t.nodes[2].pos, " contains ", node.pos );
-
         return t;
       }
     }
@@ -1259,17 +1314,13 @@ lzr.dlny.prototype = {
   //
   validate_edg: function (trngl, vrt) {
     var dlny = this;
-
     var adj = dlny.get_adjacent(trngl, vrt);
 
-    if (adj === null) {
-      //console.log( "cant validate: adjacent is null!" )
-      return false;
-    }
+    if (adj === null) return false;
 
     // adjacent branch shouldnt be in circumscribed circle
+    var crcl = adj.get_crcl();
     if (adj.crcl_contains(vrt)) {
-      //println("flipping!");
 
       // flip the adjacent edge and revalidate the two new faces
       if (!lzr.dlny.flip_trngls(adj, trngl)) {
@@ -1297,8 +1348,6 @@ lzr.dlny.prototype = {
     var dlny = this;
     dlny.trngls = []; // reset triangles list
 
-    //console.log( "triangulating!" );
-
     // add the first two omega triangles covering dlny space
     dlny.trngls.push(
       new lzr.trngl(dlny.vrts[0], dlny.vrts[2], dlny.vrts[1]));
@@ -1308,8 +1357,6 @@ lzr.dlny.prototype = {
     // incrementally add all the nodes
     for (var i = dlny.omgs.length; i < dlny.vrts.length; i++) {
       var vrt = dlny.vrts[i];
-
-      //console.log( i, "triangulating node ", node.dex, node.pos );
 
       // find the triangle that this node is inside of
       var trngl = dlny.get_containing_trngl(vrt);
@@ -1357,7 +1404,7 @@ lzr.dlny.flip_trngls = function (atrngl, btrngl) {
   // loop over original atrngl vertices as we are changing avrts list
   for (var i = 0; i < atrngl.vrts.length; i++) {
     var vrt = atrngl.vrts[i];
-    if (lzr.v2.lst_remove(bvrts, vrt) < 0) {
+    if (lzr.v2.lst_remove(bvrts, vrt) >= 0) {
       common.push(vrt);
       lzr.v2.lst_remove(avrts, vrt);
     }

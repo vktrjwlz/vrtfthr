@@ -7,8 +7,8 @@ var offset = 0.0;
 var pointerDown = false;
 var anchorP = vec2.fromValues(128.0, 128.0);
 var lastP = vec2.create();
-var mn = vec2.fromValues(50.0, 50.0);
-var sz = vec2.fromValues(600.0, 800.0);
+var mn = vec2.fromValues(200.0, 200.0);
+var sz = vec2.fromValues(600.0, 400.0);
 
 var dlny = null;
 
@@ -25,7 +25,7 @@ function pwpw() {
        Math.random() * (dlny.mn[0] + dlny.sz[0] - dlny.mn[0]) + dlny.mn[0],
        Math.random() * (dlny.mn[1] + dlny.sz[1] - dlny.mn[1]) + dlny.mn[1]);
     var clst = dlny.pick_closest(vrt);
-    if (clst === null || vec2.dist(vrt, clst) > 30) {
+    if (clst === null || vec2.dist(vrt, clst) > 60) {
       dlny.vrts.push(vrt);
       i++;
     }
@@ -35,26 +35,41 @@ function pwpw() {
   // offset delaunay triangles & draw them
   for (var i = 0; i < dlny.trngls.length; i++) {
     var trngl = dlny.trngls[i];
-    //trngl.offset(-4.0);
-    //if (!dlny.is_omg(trngl))
-    rndrr.mshs.push(trngl);
+    if (!dlny.is_omg(trngl)) {
+      rndrr.mshs.push(trngl);
+      var nwtrngl = trngl.clone();
+      nwtrngl.rgba = [0.5, 0.0, 0.0, 0.5];
+      nwtrngl.offset(-12.0);
+      rndrr.mshs.push(nwtrngl);
+    }
   }
 
   for (var i = 0; i < dlny.trngls.length; i++) {
     var trngl = dlny.trngls[i];
-    for (var j = 0; j < 3; j++) {
-      var k = j + 1;
-      if (k >= 3) k = 0;
-      var l = new lzr.ln();
-      l.weight = 6;
-      l.rgba = [0.0, 0.0, 1.0, 0.5]; // blueish
-      l.vertices.push( trngl.vrts[j] );
-      l.vertices.push( trngl.vrts[k] );
-      rndrr.mshs.push( l );
+    if (!dlny.is_omg(trngl)) {
+      for (var j = 0; j < 3; j++) {
+        var k = j + 1;
+        if (k >= 3) k = 0;
+        var l = new lzr.ln();
+        l.weight = 6;
+        l.rgba = [0.0, 0.0, 1.0, 0.5]; // blueish
+        l.vertices.push( trngl.vrts[j] );
+        l.vertices.push( trngl.vrts[k] );
+        rndrr.mshs.push( l );
+      }
+
+      var crcl = trngl.get_crcl();
+      var r = new lzr.rng();
+      r.rgba = [0.0, 1.0, 0, 0.5]; // greenish
+      r.center = crcl.cntr;
+      r.radius = crcl.rad;
+      r.weight = 6.0;
+      r.segments = 32;
+      rndrr.mshs.push(r);
     }
   }
 
-  for (var i = 0; i < dlny.vrts.length; i++) {
+  for (var i = dlny.omgs.length; i < dlny.vrts.length; i++) {
     var r = new lzr.rng();
     r.rgba = [1.0, 0.0, i/dlny.vrts.lngth, 0.5]; // reddish
     r.center = dlny.vrts[i];
