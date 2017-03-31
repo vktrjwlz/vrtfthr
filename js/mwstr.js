@@ -38,7 +38,7 @@ mwstr.errng.prototype = {
 
     // generate random vertices for delaunay
     // create delaunay triangulation
-    errng.dlny = new lzr.dlny(errng.mn, errng.sz);
+    errng.dlny = new lzr.dlny();
     var i = 0;
     var attmpts = 0;
     while (i < 20 && attmpts < 10000) {
@@ -46,7 +46,7 @@ mwstr.errng.prototype = {
       var vrt = vec2.fromValues(
          (Math.random() * errng.sz[0]) + errng.mn[0],
          (Math.random() * (errng.sz[1] - errng.tpdst)) + errng.mn[1] + errng.tpdst);
-      var clst = errng.dlny.pick_closest(vrt);
+      var clst = errng.dlny.get_closest(vrt);
       if (clst === null || vec2.dist(vrt, clst) > errng.mndst) {
         errng.dlny.vrts.push(vrt);
         i++;
@@ -67,14 +67,13 @@ mwstr.errng.prototype = {
 
     console.log("adding earring voids");
 
-    for (var i = 0; i < 2; i++) { //errng.dlny.trngls.length; i++) {
-      var trngl = errng.dlny.trngls[i].clone();
-      trngl.offset(errng.strt * -0.5);
+    for (var i = 0; i < errng.dlny.trngls.length; i++) {
+      var otrngl = errng.dlny.trngls[i].offset(errng.strt * -0.5);
       var vd = new lzr.lp();
-      vd.vrts = trngl.vrts.slice();
+      vd.vrts = otrngl.vrts.slice();
       errng.pn.vds.push(vd);
-      console.log("added triangle void " + trngl);
-      console.log("triangle is ccw " + trngl.is_ccw());
+      console.log("added triangle void " + otrngl);
+      console.log("triangle is ccw " + otrngl.is_ccw());
     }
   }
 }

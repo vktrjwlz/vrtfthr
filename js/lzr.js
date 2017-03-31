@@ -785,8 +785,8 @@ lzr.pn = function () {
   pn.bndry = new lzr.lp();
   pn.vds = []; // list of loops sorted by min x value
   pn.rgba = [0, 0, 0, 1];
-  pn.vertices = []; // list of vec2s
-  pn.triangles = []; // list of list of indices into vertices
+  pn.vrts = null; // list of vec2s
+  pn.trngls = null; // list of list of indices into vertices
   pn.colorBuff = new lzr.glbfr();
   pn.positionBuff = new lzr.glbfr();
 }
@@ -799,37 +799,41 @@ lzr.pn.prototype = {
 
   buff: function (gl) {
     var pn = this;
+    if (pn.bndry.vrts.length < 3) return;
 
-    // splice void loops into boundary loop to create vertex list
-    pn.bndry.set_mnmx();
-    var vs = pn.bndry.ordered_vrts(true); // ccw vrts for boundary
-    if (pn.vds.length > 0) {
+    // delaunay for triangulation
+    var dlny = new lzr.dlny();
 
-      // set void mins & maxs
-      for (var i = 0; i < pn.vds.length; i++) pn.vds[i].set_mnmx();
+    console.log("created delaunay");
+    console.log(dlny);
 
-      // splice voids in order
-      pn.vds.sort(lzr.lp.cmp);
-      for (var i = 0; i < pn.vds.length; i++) {
-        lzr.pn._splice_void(vs, pn.vds[i]);
+    // add boundary & void vertices to pn vrts list
+    pn.vrts = [];
+    for (var i = 0; i < pn.bndry.vrts.length; i++)
+      pn.vrts.push(pn.bndry.vrts[i]);
+
+    for (var i = 0; i < pn.vds.length; i++)
+      for (var j = 0; j < pn.vds[i].vrts.length; j++)
+        pn.vrts.push(pn.vds[i].vrts[j]);
+
+    // add vrts to delaunay & generate triangulation
+    dlny.vrts = pn.vrts.slice();
+    dlny.triangulate();
+
+    // calculate triangle indexes & add to pn
+    pn.trngls = [];
+    for (var i = 0; i < dlny.trngls.length; i++) {
+      var pt = [];
+      var dt = dlny.trngls[i];
+      for (var j = 0; j < dt.vrts.length; j++) {
+        var dx = dlny.vrts.indexOf(dt.vrts[j]);
+        if (dx >= 0) pt.push(dx);
       }
+      if (pt.length === 3) pn.trngls.push(pt);
     }
-
-    // generate triangles by clipping ears
-    dxs = [];
-    trngls = [];
-    for (i = 0; i < vs.length; i++) dxs.push(i);
-
-    var flcnt = 0;
-    while (dxs.length > 3 && flcnt < 100) {
-      if (!lzr.pn._clip_ear(trngls, vs, dxs)) flcnt++;
-    }
-    trngls.push([dxs[0], dxs[1], dxs[2]]); // add final triangle
 
     // load triangle vertices into position buffer
-    pn.vertices = vs;
-    pn.triangles = trngls;
-    pn.positionBuff.loadTriangles(gl, pn.vertices, pn.triangles);
+    pn.positionBuff.loadTriangles(gl, pn.vrts, pn.trngls);
 
     // load color vertex for each triangle vertex in position buffer
     pn.colorBuff.loadColor(gl, pn.positionBuff.numItems, pn.rgba);
@@ -1019,9 +1023,6 @@ lzr.pn._is_convex = function (a, b, c) {
 //
 lzr.lp = function () {
   var lp = this;
-  lp.mn = vec2.create();
-  lp.mx = vec2.create();
-  lp.mndx = 0;
   lp.vrts = [];
 }
 
@@ -1029,23 +1030,42 @@ lzr.lp.prototype = {
 
   constructor: lzr.lp,
 
-  set_mnmx: function () {
+  get_mn: function (mn) {
     var lp = this;
 
+    if (lp.vrts.length < 1) return -1;
+
     // calculate new min & max
-    lp.mn = lp.vrts[0];
-    lp.mx = lp.vrts[0];
-    lp.mndx = 0;
+    var mndx = 0;
+    if (!mn) mn = vec2.create();
+    vec2.copy(mn, lp.vrts[0]);
     for (var i = 1; i < lp.vrts.length; i++) {
-      var vi = lp.vrts[i];
-      if (lzr.v2.cmp(vi, lp.mn) < 0) {
-        lp.mn = vi;
-        lp.mndx = i;
-      }
-      if (lzr.v2.cmp(vi, lp.mx) > 0) {
-        lp.mx = vi;
+      var v = lp.vrts[i];
+      if (lzr.v2.cmp(v, mn) < 0) {
+        vec2.copy(mn, v);
+        mndx = i;
       }
     }
+    return mndx;
+  },
+
+  get_mx: function (mx) {
+    var lp = this;
+
+    if (lp.vrts.length < 1) return -1;
+
+    // calculate new min & max
+    var mxdx = 0;
+    if (!mx) mx = vec2.create();
+    vec2.copy(mx, lp.vrts[0]);
+    for (var i = 1; i < lp.vrts.length; i++) {
+      var v = lp.vrts[i];
+      if (lzr.v2.cmp(v, mx) > 0) {
+        vec2.copy(mx, v);
+        mxdx = i;
+      }
+    }
+    return mxdx;
   },
 
   offset: function () {
@@ -1082,21 +1102,10 @@ lzr.lp.prototype = {
       return lp.vrts.slice();
     }
 
-    var vs = [];
-    var i = lp.mndx;
-    while (vs.length < lp.vrts.length - 1) {
-      i++;
-      if (i >= lp.vrts.length) i = 0;
-      vs.push(lp.vrts[i]);
-    }
+    var vs = lp.vrts.slice();
 
     // unless loop is ccw & thats what was requested, reverse vertices
-    if (lp.is_ccw() !== ccw) {
-      vs.reverse();
-    }
-
-    // add min vertex to beginning & return list
-    vs.unshift(lp.mn);
+    if (lp.is_ccw() !== ccw) vs.reverse();
     return vs;
   },
 
@@ -1104,7 +1113,10 @@ lzr.lp.prototype = {
   is_ccw: function () {
     var lp = this;
     if (lp.vrts.length < 3) return false;
-    var dx = lp.mndx - 1;
+
+    // get min vertex & preceding & following vertices
+    // min vertex of polygon is always convex
+    var dx = lp.get_mn() - 1;
     if (dx < 0) dx = lp.vrts.length - 1;
     var a = lp.vrts[dx];
     dx++;
@@ -1113,6 +1125,8 @@ lzr.lp.prototype = {
     dx++;
     if (dx >= lp.vrts.length) dx = 0;
     var c = lp.vrts[dx];
+
+    // calculate determinant
     var det = ((b[0] - a[0]) * (c[1] - a[1])) - ((c[0] - a[0]) * (b[1] - a[1]));
     if (det < 0) return true;
     return false;
@@ -1120,17 +1134,22 @@ lzr.lp.prototype = {
 }
 
 lzr.lp.cmp = function(a, b) {
-  return lzr.v2.cmp(a.mn, b.mn);
+  var amn = vec2.create();
+  if (a.get_mn(amn) < 0) return -1;
+  var bmn = vec2.create();
+  if (b.get_mn(bmn) < 0) return 1;
+  return lzr.v2.cmp(amn, bmn);
 }
 // --lp
 // ********
 
 // ****************
-// trngl -> triangle geometry
+// trngl -> triangle geometry as indices into shared vertex list
 //
-lzr.trngl = function (a, b, c) {
+lzr.trngl = function (vrts, a, b, c) {
   var trngl = this;
-  trngl.vrts = [ a, b, c ];
+  trngl.vrts = vrts;
+  trngl.dxs = [ a, b, c ];
   trngl.rgba = [0, 0, 1, 0.3];
   trngl.colorBuff = new lzr.glbfr();
   trngl.positionBuff = new lzr.glbfr();
@@ -1146,25 +1165,18 @@ lzr.trngl.prototype = {
 
   toString: function () {
     var trngl = this;
-    return "trngl( " + trngl.vrts[0].toString() + ", "
-                     + trngl.vrts[1].toString() + ", "
-                     + trngl.vrts[2].toString() + " )";
-  },
-
-  clone: function () {
-    var trngl = this;
-    if (trngl.vrts.length !== 3) return null;
-    var nwtrngl = new lzr.trngl(
-      vec2.clone(trngl.vrts[0]),
-      vec2.clone(trngl.vrts[1]),
-      vec2.clone(trngl.vrts[2]));
-    return nwtrngl;
+    return "trngl( " + trngl.dxs[0].toString() + "<"
+                     + trngl.vrts[trngl.dxs[0]].toString() + ">, "
+                     + trngl.dxs[1].toString() + "<"
+                     + trngl.vrts[trngl.dxs[1]].toString() + ">, "
+                     + trngl.dxs[2].toString() + "<"
+                     + trngl.vrts[trngl.dxs[2]].toString() + "> )";
   },
 
   cmp: function (otrngl) {
     var trngl = this;
     for (var i = 0; i < 3; i++) {
-      var d = lzr.v2.cmp(trngl.vrts[i], otrngl.vrts[i]);
+      var d = lzr.v2.cmp(trngl.vrts[trngl.dxs[i]], otrngl.vrts[otrngl.dxs[i]]);
       if (d !== 0) return d;
     }
     return 0;
@@ -1172,13 +1184,13 @@ lzr.trngl.prototype = {
 
   is_ccw: function () {
     var trngl = this;
-    if (trngl.vrts.length !== 3) return false;
+    if (trngl.dxs.length !== 3) return false;
 
-    var a = trngl.vrts[0];
-    var b = trngl.vrts[1];
-    var c = trngl.vrts[2];
+    var a = trngl.vrts[trngl.dxs[0]];
+    var b = trngl.vrts[trngl.dxs[1]];
+    var c = trngl.vrts[trngl.dxs[2]];
 
-    // if not ccw flop second 2 nodes
+    // calculate determinant
     if (((b[0] - a[0]) * (c[1] - a[1])) - ((c[0] - a[0]) * (b[1] - a[1])) > 0)
       return false;
 
@@ -1187,13 +1199,13 @@ lzr.trngl.prototype = {
 
   ccwize: function () {
     var trngl = this;
-    if (trngl.vrts.length !== 3) return false;
+    if (trngl.dxs.length !== 3) return false;
 
     // if not ccw flop second 2 nodes
     if (!trngl.is_ccw()) {
-      var tmp_vrt = trngl.vrts[1];
-      trngl.vrts[1] = trngl.vrts[2];
-      trngl.vrts[2] = tmp_vrt;
+      var tmp_dx = trngl.dxs[1];
+      trngl.dxs[1] = trngl.dxs[2];
+      trngl.dxs[2] = tmp_dx;
     }
     return true;
   },
@@ -1202,8 +1214,8 @@ lzr.trngl.prototype = {
   get_center: function (ouv) {
     var trngl = this;
 
-    vec2.add(ouv, trngl.vrts[0], trng.vrts[1]);
-    vec2.add(ouv, ouv, trngl.vrts[2]);
+    vec2.add(ouv, trngl.vrts[trngl.dxs[0]], trng.vrts[trngl.dxs[1]]);
+    vec2.add(ouv, ouv, trngl.vrts[trngl.dxs[2]]);
     vec2.scale(ouv, ouv, 1.0/3.0);
   },
 
@@ -1211,10 +1223,11 @@ lzr.trngl.prototype = {
   // http://stackoverflow.com/questions/2049582/how-to-determine-if-a-point-is-in-a-2d-triangle
   contains: function (vrt) {
     var trngl = this;
+    if (trngl.dxs.length !== 3) return false;
 
-    var a = trngl.vrts[0];
-    var b = trngl.vrts[1];
-    var c = trngl.vrts[2];
+    var a = trngl.vrts[trngl.dxs[0]];
+    var b = trngl.vrts[trngl.dxs[1]];
+    var c = trngl.vrts[trngl.dxs[2]];
 
     var s = a[1] * c[0] - a[0] * c[1] + (c[1] - a[1]) * vrt[0] + (a[0] - c[0]) * vrt[1];
     var t = a[0] * b[1] - a[1] * b[0] + (a[1] - b[1]) * vrt[0] + (b[0] - a[0]) * vrt[1];
@@ -1230,35 +1243,37 @@ lzr.trngl.prototype = {
     return s > 0 && t > 0 && (s + t) <= area;
   },
 
-  // split triangle into 3 triangles at vertex
+  // split triangle into 3 triangles at vertex index
   // assumes triangle contains vertex
-  split:  function (vrt) {
+  split:  function (dx) {
     var trngl = this;
-    if (trngl.vrts.length < 3) {
-      console.log("cant split triangle with fewer than 3 vertices!");
-      console.log(trngl);
+    if (trngl.dxs.length !== 3) {
+      console.log("cant split triangle without 3 vertices! " + trngl);
       return [];
     }
-    var p = trngl.vrts[0];
-    var q = trngl.vrts[1];
-    var r = trngl.vrts[2];
+    var p = trngl.dxs[0];
+    var q = trngl.dxs[1];
+    var r = trngl.dxs[2];
 
     // break this triangle into 3 new triangles using the added
-    // vertex as the common vertex between all three
+    // vertex index as the common vertex between all three
     return [
-      new lzr.trngl( vrt, p, q ),
-      new lzr.trngl( vrt, q, r ),
-      new lzr.trngl( vrt, r, p ),
+      new lzr.trngl(trngl.vrts, dx, p, q),
+      new lzr.trngl(trngl.vrts, dx, q, r),
+      new lzr.trngl(trngl.vrts, dx, r, p),
     ];
   },
 
   get_crcl: function () {
     var trngl = this;
-    if (trngl.vrts.length < 3) return null;
+    if (trngl.dxs.length !== 3) return null;
 
     var crcl = new lzr.crcl();
-    if (!crcl.set(trngl.vrts[0], trngl.vrts[1], trngl.vrts[2])) {
-      console.log("failed to set circle from triangle " + trngl.vrts);
+    if (!crcl.set(
+        trngl.vrts[trngl.dxs[0]],
+        trngl.vrts[trngl.dxs[1]],
+        trngl.vrts[trngl.dxs[2]])) {
+      console.log("failed to set circle from triangle " + trngl);
       return null;
     }
     return crcl;
@@ -1277,17 +1292,24 @@ lzr.trngl.prototype = {
     return crcl.contains(vrt);
   },
 
-  // offset edges of triangle parallel to current egdges
+  // return new triangle with edges offset parallel to current triangle edges
   offset: function (s) {
     var trngl = this;
-    if (trngl.vrts.length < 3) return false;
+    if (trngl.dxs.length !== 3) return null;
+
+    // clone indexed vertices into new vertex list
+    var nwvrts = [];
+    for (var i = 0; i < 3; i++)
+      nwvrts.push(vec2.clone(trngl.vrts[trngl.dxs[i]]));
+
+    var nwt = new lzr.trngl(nwvrts, 0, 1, 2);
 
     // generate segments of triangle & offset
     var sgs = [];
     for (var i = 0; i < 3; i++) {
       var j = i - 1;
       if (j < 0) j = 2;
-      var sg = lzr.sg.from_end(trngl.vrts[j], trngl.vrts[i]);
+      var sg = lzr.sg.from_end(nwt.vrts[j], nwt.vrts[i]);
       lzr.sg.offset(sg, sg, s);
       sgs.push(sg);
     }
@@ -1296,24 +1318,26 @@ lzr.trngl.prototype = {
     for (i = 0; i < 3; i++) {
       var j = i - 1;
       if (j < 0) j = 2;
-      lzr.sg.intersect(trngl.vrts[i], sgs[i], sgs[j]);
+      lzr.sg.intersect(nwt.vrts[i], sgs[i], sgs[j]);
     }
 
-    return true;
+    return nwt;
   },
 
   buff: function (gl) {
-    if (this.vrts.length != 3) {
+    var trngl = this;
+
+    if (trngl.dxs.length != 3) {
       console.log("lzr.trngl doesnt have 3 vertices!")
       return;
     }
 
     // build triangles
-    var ts = [ [0, 1, 2] ];
+    var ts = [ trngl.dxs ];
 
     // write data to buffers
-    this.positionBuff.loadTriangles( gl, this.vrts, ts );
-    this.colorBuff.loadColor( gl, this.positionBuff.numItems, this.rgba );
+    trngl.positionBuff.loadTriangles( gl, trngl.vrts, ts );
+    trngl.colorBuff.loadColor( gl, trngl.positionBuff.numItems, trngl.rgba );
   }
 }
 // --trngl
@@ -1354,7 +1378,7 @@ lzr.crcl.prototype = {
 
     /* Check for coincident points */
     if(fabsy1y2 < lzr.EPSILON && fabsy2y3 < lzr.EPSILON) {
-      console.log("Eek! Coincident points!");
+      console.log("Eek! Coincident points! " + [a, b, c]);
       return false;
     }
 
@@ -1414,17 +1438,12 @@ lzr.crcl.prototype = {
 // ****************
 // dlny -> generate delaunay triangulation over a set of vertices
 //
-lzr.dlny = function (mn, sz) {
+lzr.dlny = function () {
   var dlny = this;
-  dlny.mn = vec2.clone(mn); // min coord vector
-  dlny.sz = vec2.clone(sz); // size delta vector
-  dlny.omgs = [ // set omega vertices from min & size vectors
-    vec2.clone(mn),
-    vec2.fromValues(mn[0] + sz[0], mn[1]),
-    vec2.fromValues(mn[0], mn[1] + sz[1]),
-    vec2.fromValues(mn[0] + sz[0], mn[1] + sz[1]),
-  ];
-  dlny.vrts = dlny.omgs.slice();
+  dlny.mn = null; // min coord vector
+  dlny.mx = null; // max coord vector
+  dlny.omgs = null; // omega vertices containing all other vertices
+  dlny.vrts = [];
   dlny.trngls = null;
 }
 
@@ -1432,18 +1451,16 @@ lzr.dlny.prototype = {
 
   constructor: lzr.dlny,
 
-  // find closest non-omega vertex to given vertex
-  pick_closest: function (vrt) {
+  // find closest vertex to given vertex
+  get_closest: function (vrt) {
     var dlny = this;
 
     // check that there are more than omega vertices
-    if (dlny.vrts.length - dlny.omgs.length < 1) return null;
+    if (dlny.vrts.length < 1) return null;
 
-    var i = dlny.omgs.length;
-    var mn_vrt = dlny.vrts[i];
+    var mn_vrt = dlny.vrts[0];
     var mn_dlta = vec2.dist(vrt, mn_vrt);
-    while (i < dlny.vrts.length - 1) {
-      i++;
+    for (var i = 1; i < dlny.vrts.length; i++) {
       var nxt_vrt = dlny.vrts[i];
       var nxt_dlta = vec2.dist(vrt, nxt_vrt);
       if (nxt_dlta < mn_dlta) {
@@ -1454,24 +1471,28 @@ lzr.dlny.prototype = {
     return mn_vrt;
   },
 
-  get_adjacent: function (trngl, vrt) {
+  // assumes triangle shares vertex list with dlny
+  get_adjacent: function (trngl, vdx) {
     var dlny = this;
 
-    var match = trngl.vrts.slice();
+    var match = trngl.dxs.slice();
 
-    if (lzr.v2.lst_remove(match, vrt) < 0) {
+    // find index of vertex index & remove from match indices
+    var dxdx = match.indexOf(vdx);
+    if (dxdx < 0) {
       console.log("couldnt find adjacent: vertex not in triangle!");
       return null;
     }
+    match.splice(dxdx, 1);
 
     var p = match.pop();
     var q = match.pop();
 
     for (var i = 0; i < dlny.trngls.length; i++) {
       var otrngl = dlny.trngls[i];
-      if (trngl != otrngl
-          && lzr.v2.lst_contains(otrngl.vrts, p)
-          && lzr.v2.lst_contains(otrngl.vrts, q))
+      if (trngl !== otrngl
+          && otrngl.dxs.indexOf(p) >= 0
+          && otrngl.dxs.indexOf(q) >= 0)
         return otrngl;
     }
 
@@ -1493,50 +1514,72 @@ lzr.dlny.prototype = {
   },
 
   //
-  validate_edg: function (trngl, vrt) {
+  validate_edge: function (trngl, vdx) {
     var dlny = this;
-    var adj = dlny.get_adjacent(trngl, vrt);
+    var adj = dlny.get_adjacent(trngl, vdx);
 
     if (adj === null) return false;
 
     // adjacent branch shouldnt be in circumscribed circle
     var crcl = adj.get_crcl();
-    if (adj.crcl_contains(vrt)) {
+    if (adj.crcl_contains(dlny.vrts[vdx])) {
 
       // flip the adjacent edge and revalidate the two new faces
       if (!lzr.dlny.flip_trngls(adj, trngl)) {
         console.log( "failed to flip!" );
         return false;
       }
-      this.validate_edg(trngl, vrt);
-      this.validate_edg(adj, vrt);
+      dlny.validate_edge(trngl, vdx);
+      dlny.validate_edge(adj, vdx);
     }
     return true;
   },
 
-  // determine if this triangle contains an omega vertex
-  is_omg: function (trngl) {
-    var dlny = this;
-
-    for (var i = 0; i < dlny.omgs.length; i++) {
-      var ovrt = dlny.omgs[i];
-      if (lzr.v2.lst_contains(trngl.vrts, ovrt)) return true;
-    }
-    return false;
-  },
-
   triangulate: function () {
     var dlny = this;
+
+    if (dlny.vrts.length < 3) return;
+
+    // generate omegas from mn & mx coords
+    dlny.mn = vec2.clone(dlny.vrts[0]);
+    dlny.mx = vec2.clone(dlny.vrts[0]);
+    for (var i = 1; i < dlny.vrts.length; i++) {
+      var v = dlny.vrts[i];
+      if (v[0] < dlny.mn[0]) dlny.mn[0] = v[0];
+      if (v[1] < dlny.mn[1]) dlny.mn[1] = v[1];
+      if (v[0] > dlny.mx[0]) dlny.mx[0] = v[0];
+      if (v[1] > dlny.mx[1]) dlny.mx[1] = v[1];
+    }
+    dlny.mn[0] -= 10.0;
+    dlny.mn[1] -= 10.0;
+    dlny.mx[0] += 10.0;
+    dlny.mx[1] += 10.0;
+    dlny.omgs = [
+      dlny.mn,
+      vec2.fromValues(dlny.mn[0], dlny.mx[1]),
+      dlny.mx,
+      vec2.fromValues(dlny.mx[0], dlny.mn[1])
+    ];
+
+    // console.log("mn " + dlny.mn + " max " + dlny.mx);
+
+    // add omegas to end of delaunay vrts
+    for (var i = 0; i < dlny.omgs.length; i++)
+      dlny.vrts.push(dlny.omgs[i]);
+
     dlny.trngls = []; // reset triangles list
 
     // add the first two omega triangles covering dlny space
+    var l = dlny.vrts.length;
     dlny.trngls.push(
-      new lzr.trngl(dlny.vrts[0], dlny.vrts[2], dlny.vrts[1]));
+      new lzr.trngl(dlny.vrts, l-2, l-3, l-4));
     dlny.trngls.push(
-      new lzr.trngl(dlny.vrts[1], dlny.vrts[2], dlny.vrts[3]));
+      new lzr.trngl(dlny.vrts, l-4, l-1, l-2));
+
+    // console.log("omega triangles: " + dlny.trngls[0] + ", " + dlny.trngls[1]);
 
     // incrementally add all the nodes
-    for (var i = dlny.omgs.length; i < dlny.vrts.length; i++) {
+    for (var i = 0; i < dlny.vrts.length - dlny.omgs.length; i++) {
       var vrt = dlny.vrts[i];
 
       // find the triangle that this node is inside of
@@ -1551,10 +1594,10 @@ lzr.dlny.prototype = {
       if (true) {
 
         // remove the triangle that is getting broken up
-        var dx = dlny.trngls.indexOf(trngl);
-        if (dx >= 0) dlny.trngls.splice( dx, 1 );
+        var tdx = dlny.trngls.indexOf(trngl);
+        if (tdx >= 0) dlny.trngls.splice( tdx, 1 );
 
-        var nwts = trngl.split(vrt);
+        var nwts = trngl.split(i);
         if (nwts.length === 3) {
 
           // add new triangles to list
@@ -1562,18 +1605,24 @@ lzr.dlny.prototype = {
 
           // make sure each face is valid
           for (var j = 0; j < nwts.length; j++) {
-            dlny.validate_edg(nwts[j], vrt);
+            dlny.validate_edge(nwts[j], i);
           }
         }
       }
       else {} // on the edge
     }
 
-    // remove omega triangles from triangle list
+    // remove omega vertices & triangles
+    for (var i = 0; i < 4; i++) dlny.vrts.pop();
     var ntrngls = [];
+    l = dlny.vrts.length;
     for (var i = 0; i < dlny.trngls.length; i++) {
       var trngl = dlny.trngls[i];
-      if (!dlny.is_omg(trngl)) ntrngls.push(trngl);
+      var is_omg = false;
+      for (var j = 0; j < trngl.dxs.length; j++)
+        if (trngl.dxs[j] >= l)
+          is_omg = true;
+      if (!is_omg) ntrngls.push(trngl);
     }
     dlny.trngls = ntrngls;
 
@@ -1585,17 +1634,20 @@ lzr.dlny.prototype = {
 lzr.dlny.flip_trngls = function (atrngl, btrngl) {
 
   // clone vertices lists
-  var avrts = atrngl.vrts.slice();
-  var bvrts = btrngl.vrts.slice();
+  var adxs = atrngl.dxs.slice();
+  var bdxs = btrngl.dxs.slice();
   var common = [];
 
   // remove common vertices
-  // loop over original atrngl vertices as we are changing avrts list
-  for (var i = 0; i < atrngl.vrts.length; i++) {
-    var vrt = atrngl.vrts[i];
-    if (lzr.v2.lst_remove(bvrts, vrt) >= 0) {
-      common.push(vrt);
-      lzr.v2.lst_remove(avrts, vrt);
+  // loop over original atrngl indices as we are changing adxs list
+  for (var i = 0; i < atrngl.dxs.length; i++) {
+    var dx = atrngl.dxs[i];
+    var dxdx = bdxs.indexOf(dx);
+    if (dxdx >= 0) {
+      common.push(dx);
+      bdxs.splice(dxdx, 1);
+      dxdx = adxs.indexOf(dx);
+      adxs.splice(dxdx, 1);
     }
   }
 
@@ -1603,14 +1655,14 @@ lzr.dlny.flip_trngls = function (atrngl, btrngl) {
   if (common.length != 2) return false;
 
   // copy remaining unique nodes and split common
-  avrts.push( bvrts[0] );
-  bvrts.push( avrts[0] );
-  avrts.push( common.pop() );
-  bvrts.push( common.pop() );
+  adxs.push( bdxs[0] );
+  bdxs.push( adxs[0] );
+  adxs.push( common.pop() );
+  bdxs.push( common.pop() );
 
   // replace nodes lists with new lists and ccwize
-  atrngl.vrts = avrts;
-  btrngl.vrts = bvrts;
+  atrngl.dxs = adxs;
+  btrngl.dxs = bdxs;
   if (!atrngl.ccwize()) return false;
   if (!btrngl.ccwize()) return false;
 
