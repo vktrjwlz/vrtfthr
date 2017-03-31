@@ -801,38 +801,32 @@ lzr.pn.prototype = {
     var pn = this;
     if (pn.bndry.vrts.length < 3) return;
 
-    // delaunay for triangulation
-    var dlny = new lzr.dlny();
+    // splice void loops into boundary loop to create vertex list
+    var vs = pn.bndry.ordered_vrts(true); // ccw vrts for boundary
+    if (pn.vds.length > 0) {
 
-    console.log("created delaunay");
-    console.log(dlny);
-
-    // add boundary & void vertices to pn vrts list
-    pn.vrts = [];
-    for (var i = 0; i < pn.bndry.vrts.length; i++)
-      pn.vrts.push(pn.bndry.vrts[i]);
-
-    for (var i = 0; i < pn.vds.length; i++)
-      for (var j = 0; j < pn.vds[i].vrts.length; j++)
-        pn.vrts.push(pn.vds[i].vrts[j]);
-
-    // add vrts to delaunay & generate triangulation
-    dlny.vrts = pn.vrts.slice();
-    dlny.triangulate();
-
-    // calculate triangle indexes & add to pn
-    pn.trngls = [];
-    for (var i = 0; i < dlny.trngls.length; i++) {
-      var pt = [];
-      var dt = dlny.trngls[i];
-      for (var j = 0; j < dt.vrts.length; j++) {
-        var dx = dlny.vrts.indexOf(dt.vrts[j]);
-        if (dx >= 0) pt.push(dx);
+      // splice voids in order
+      pn.vds.sort(lzr.lp.cmp);
+      for (var i = 0; i < pn.vds.length; i++) {
+        lzr.pn._splice_void(vs, pn.vds[i]);
       }
-      if (pt.length === 3) pn.trngls.push(pt);
     }
 
+    // generate triangles by clipping ears
+    dxs = [];
+    trngls = [];
+    for (i = 0; i < vs.length; i++) dxs.push(i);
+
+    var flcnt = 0;
+    while (dxs.length > 3 && flcnt < 100) {
+      if (!lzr.pn._clip_ear(trngls, vs, dxs)) flcnt++;
+    }
+    console.log("ear clipping fail count: " + flcnt);
+    trngls.push([dxs[0], dxs[1], dxs[2]]); // add final triangle
+
     // load triangle vertices into position buffer
+    pn.vrts = vs;
+    pn.trngls = trngls;
     pn.positionBuff.loadTriangles(gl, pn.vrts, pn.trngls);
 
     // load color vertex for each triangle vertex in position buffer
@@ -847,16 +841,21 @@ lzr.pn._splice_void = function (vs, lp) {
     return;
   }
 
-  // console.log("splicing " + lp.vrts + " into " + vs);
+  console.log("splicing " + lp.vrts + " into " + vs);
 
   // get min void loop vertex
-  var vv = lp.mn;
+  var vvdx = lp.get_mn();
+  if (vvdx < 0) {
+    console.log("failed to get min dx for loop " + lp);
+    return false;
+  }
+  var vv = lp.vrts[vvdx];
 
   // get segment from min void loop vertex to boundary min x value
   var mnbv = lzr.v2.lst_mn(vs);
   var isg = lzr.sg.from_end(vv, vec2.fromValues(mnbv[0], vv[1]));
 
-  // console.log("isg " + lzr.sg.stringize(isg));
+  console.log("isg " + lzr.sg.stringize(isg));
 
   // check if segment intersects any boundary vertices
   for (var i = 0; i < vs.length; i++) {
@@ -866,6 +865,9 @@ lzr.pn._splice_void = function (vs, lp) {
 
         // splice cw loop vertices into list
         var vvs = lp.ordered_vrts(false);
+        while (vvs[0] !== vv) {
+          vvs.push(vvs.shift());
+        }
         vvs.push(vv); // add entry void vertex at end again
         vvs.push(iv); // add entry outer vertex again
 
@@ -882,36 +884,36 @@ lzr.pn._splice_void = function (vs, lp) {
     var j = i + 1;
     if (j >= vs.length) j = 0;
 
-    // console.log("checking segment from " + vs[i] + " to " + vs[j]);
+    console.log("checking segment from " + vs[i] + " to " + vs[j]);
 
     // check that at least one end of segment is left of void vertex
     if (vs[i][0] < vv[0] || vs[j][0] < vv[0]) {
 
-      // console.log("seg is left of void vertex");
+      console.log("seg is left of void vertex");
 
       // intersect segments
       var bsg = lzr.sg.from_end(vs[i], vs[j]);
       var nv = vec2.create();
       if (lzr.sg.intersect(nv, bsg, isg)) {
 
-        // console.log("segments intersect at " + nv);
+        console.log("segments intersect at " + nv);
 
         // check if intersection falls in bsgs y interval
         if (lzr.sg.mny(bsg) < nv[1] && nv[1] < lzr.sg.mxy(bsg)) {
 
-          // console.log("intersection falls within y interval!");
+          console.log("intersection falls within y interval!");
 
-          // set iv to min x vertex of bsg
+          // set iv to max x vertex of bsg
           var iv = vec2.create();
           var idx = i;
           lzr.sg.orgn(iv, bsg);
-          if (bsg[2] < 0) {
+          if (bsg[2] > 0) {
             lzr.sg.end(iv, bsg);
             idx = j;
           }
 
           // generate intersection triangle & assure it is ccw
-          var itrngl = new lzr.trngl(vv, nv, iv);
+          var itrngl = new lzr.trngl([vv, nv, iv], 0, 1, 2);
           itrngl.ccwize();
 
           // check whether any other boundary vertices are in itrngl
@@ -923,8 +925,13 @@ lzr.pn._splice_void = function (vs, lp) {
           // if no boundary vertices found in itrngl splice at idx
           if (bdxs.length === 0) {
 
+            console.log("no intersecting vertices! adding");
+
             // splice cw loop vertices into list
             var vvs = lp.ordered_vrts(false);
+            while (vvs[0] !== vv) {
+              vvs.push(vvs.shift());
+            }
             vvs.push(vv); // add entry void vertex at end again
             vvs.push(iv); // add entry outer vertex again
 
@@ -934,13 +941,15 @@ lzr.pn._splice_void = function (vs, lp) {
             return true;
           }
 
+          console.log("found intersecting vertices: " + bdxs)
+
           // find vertex from bdxs with lowest angle from isg
           var xvdx = bdxs[0];
           var mnangl = lzr.sg.angle_to(isg, vs[xvdx]);
           for (var k = 1; k < bdxs.length; k++) {
             var dx = bdxs[k];
             var angl = lzr.sg.angle_to(isg, vs[dx]);
-            if (angl < mnangl) {
+            if (angl <= mnangl) { // we want last vertex in a tie
               mnangl = angl;
               xvdx = dx;
             }
@@ -948,6 +957,9 @@ lzr.pn._splice_void = function (vs, lp) {
 
           // splice at xvdx
           var vvs = lp.ordered_vrts(false);
+          while (vvs[0] !== vv) {
+            vvs.push(vvs.shift());
+          }
           vvs.push(vv); // add entry void vertex at end again
           vvs.push(vs[xvdx]); // add entry outer vertex again
 
@@ -991,7 +1003,7 @@ lzr.pn._clip_ear = function (trngls, vs, dxs) {
       for (var j = 0; j < vs.length; j++) {
         var v = vs[j];
         if (v !== vs[dxs[a]] && v !== vs[dxs[b]] && v !== vs[dxs[c]]) {
-          var trngl = new lzr.trngl(vs[dxs[a]], vs[dxs[b]], vs[dxs[c]]);
+          var trngl = new lzr.trngl(vs, dxs[a], dxs[b], dxs[c]);
           if (trngl.contains(v)) {
             inside = true;
           }
@@ -1550,10 +1562,10 @@ lzr.dlny.prototype = {
       if (v[0] > dlny.mx[0]) dlny.mx[0] = v[0];
       if (v[1] > dlny.mx[1]) dlny.mx[1] = v[1];
     }
-    dlny.mn[0] -= 10.0;
-    dlny.mn[1] -= 10.0;
-    dlny.mx[0] += 10.0;
-    dlny.mx[1] += 10.0;
+    dlny.mn[0] -= 1000.0;
+    dlny.mn[1] -= 1000.0;
+    dlny.mx[0] += 1000.0;
+    dlny.mx[1] += 1000.0;
     dlny.omgs = [
       dlny.mn,
       vec2.fromValues(dlny.mn[0], dlny.mx[1]),

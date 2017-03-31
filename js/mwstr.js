@@ -3,14 +3,14 @@ var mwstr = {}; // init lzr namespace
 mwstr.errng = function () {
   var errng = this;
   errng.mn = vec2.fromValues(50, 50); // min screen coord of bounds
-  errng.sz = vec2.fromValues(300, 600); // screen size of bounds
-  errng.mmsz = vec2.fromValues(20, 40); // mm size of bounds
+  errng.sz = vec2.fromValues(1200, 400); // screen size of bounds
+  errng.mmsz = vec2.fromValues(60, 20); // mm size of bounds
 
   errng.hkvrt = null; // top vertex to connect to hook
 
   errng.nmvrts = 20; // num vertices
-  errng.mndst = 80; // min distance between vertices
-  errng.tpdst = 100; // top keepout (for hook)
+  errng.mndst = 120; // min distance between vertices
+  errng.tpdst = 0; // top keepout (for hook)
   errng.strt = 16; // width of struts
 
   errng.dlny = null;
@@ -67,13 +67,15 @@ mwstr.errng.prototype = {
 
     console.log("adding earring voids");
 
-    for (var i = 0; i < errng.dlny.trngls.length; i++) {
+    errng.otrngls = [];
+
+    for (var i = 0; i < 2; i++) { //errng.dlny.trngls.length; i++) {
       var otrngl = errng.dlny.trngls[i].offset(errng.strt * -0.5);
+      errng.otrngls.push(otrngl);
       var vd = new lzr.lp();
       vd.vrts = otrngl.vrts.slice();
       errng.pn.vds.push(vd);
-      console.log("added triangle void " + otrngl);
-      console.log("triangle is ccw " + otrngl.is_ccw());
+      console.log(i + " " + otrngl);
     }
   }
 }
