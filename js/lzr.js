@@ -340,13 +340,13 @@ lzr.sg.set_orgn = function (out, p) {
   return out;
 }
 
-lzr.sg.delta = function (ouv, sg) {
+lzr.sg.dlta = function (ouv, sg) {
   ouv[0] = sg[2];
   ouv[1] = sg[3];
   return ouv;
 }
 
-lzr.sg.setDelta = function (out, p) {
+lzr.sg.set_dlta = function (out, p) {
   out[2] = p[0];
   out[3] = p[1];
   return out;
@@ -356,7 +356,7 @@ lzr.sg.end = function (ouv, sg) {
   var o = vec2.create();
   lzr.sg.orgn( o, sg );
   var d = vec2.create();
-  lzr.sg.delta( d, sg );
+  lzr.sg.dlta( d, sg );
   vec2.add( ouv, o, d );
   return ouv;
 }
@@ -380,10 +380,37 @@ lzr.sg.stringize = function (sg) {
                   + sg[2] + ", " + sg[3] + ") )";
 }
 
-lzr.sg.mag = function(sg) {
+lzr.sg.mag = function (sg) {
   return vec2.length(vec2.fromValues(sg[2], sg[3]));
 }
 
+lzr.sg.mnx = function (sg) {
+  if (sg[2] < 0) return sg[0] + sg[2];
+  return sg[0];
+}
+lzr.sg.mxx = function (sg) {
+  if (sg[2] > 0) return sg[0] + sg[2];
+  return sg[0];
+}
+lzr.sg.mny = function (sg) {
+  if (sg[3] < 0) return sg[1] + sg[3];
+  return sg[1];
+}
+lzr.sg.mxy = function (sg) {
+  if (sg[3] > 0) return sg[1] + sg[3];
+  return sg[1];
+}
+
+// calculate angle from segment to vertex (with origin as root)
+lzr.sg.angle_to = function (sg, vrt) {
+  var orgn = vec2.create();
+  lzr.sg.orgn(orgn, sg);
+  var v1 = vec2.create();
+  lzr.sg.dlta(v1, sg);
+  var v2 = vec2.create();
+  vec2.sub(v2, vrt, orgn);
+  return Math.acos( vec2.dot(v1, v2) / (vec2.length(v1)*vec2.length(v2)) );
+}
 
 // test whether given point is left of segment
 lzr.sg.is_left = function (sg, p) { // vec2 p
@@ -430,12 +457,12 @@ lzr.sg.intersect = function (ouv, sga, sgb) { // lzr.seg sg
 
   // if determinant is ~0 lines are parallel
   var det = (a1 * b2) - (a2 * b1);
-  if (Math.abs(det) < lzr.EPSILON) return null;
+  if (Math.abs(det) < lzr.EPSILON) return false;
 
   ouv[0] = ((b2 * c1) - (b1 * c2)) / det;
   ouv[1] = ((a1 * c2) - (a2 * c1)) / det;
 
-  return ouv;
+  return true;
 }
 
 // set origin of out seg to intersection of seg sg and other seg o
@@ -475,7 +502,7 @@ lzr.sg.project = function (ouv, p, sg) { // vec2 ouv, p / lzr.sg sg
   vec2.sub( a, p, lzr.sg.orgn(sg) ); // a is vector from origin to p
 
   // project a onto delta vector
-  var b = vec2.clone( lzr.sg.delta(sg) );
+  var b = vec2.clone( lzr.sg.dlta(sg) );
   vec2.normalize( b, b );
   vec2.scalar( b, vec2.dot(a, b) );
 
@@ -494,7 +521,7 @@ lzr.sg.distance = function (sg, p) { // vec2 p
 
 // reflect delta vec2 p across delta of sg sg and assign to vec2 ouv
 lzr.sg.reflect_dlta = function (ouv, p, sg) {
-  var a = vec2.clone( lzr.sg.delta(sg) );
+  var a = vec2.clone( lzr.sg.dlta(sg) );
   vec2.normalize( a, a );
   vec2.scalar( a, vec2.dot(p, a) ); // a is p projected onto sg
   var b = vec2.create();
@@ -548,13 +575,13 @@ lzr.sg.qrot = function (out, sg) { // calc quarter rotation of delta vec
   lzr.sg.dlta( dlta, sg );
   lzr.sg.copy( out, sg );
   vec2.set( dlta, -dlta[1], dlta[0] ); // quarter rotation
-  lzr.sg.setDelta( out, dlta );
+  lzr.sg.set_dlta( out, dlta );
 }
 
 lzr.sg.ortho_nrml = function (nrml, sg) { // calc normal orthogonal to segment
 
   // generate normal from segment delta
-  lzr.sg.delta(nrml, sg); // set normal to dlta component of segment
+  lzr.sg.dlta(nrml, sg); // set normal to dlta component of segment
   vec2.normalize(nrml, nrml);
   lzr.v2.qrot(nrml, nrml);
 
@@ -572,7 +599,7 @@ lzr.sg.ortho_nrml = function (nrml, sg) { // calc normal orthogonal to segment
 
 // ****************
 // vect2 util funcs
-lzr.EPSILON = 0.01
+lzr.EPSILON = 0.001
 lzr.v2 = {}
 lzr.v2.qrot = function (ouv, v) { // quarter rotation clockwise
   vec2.set(ouv, v[1], -v[0]);
@@ -590,6 +617,21 @@ lzr.v2.cmp = function (a, b) {
     return c;
   }
   return 0;
+}
+lzr.v2.eq = function (a, b) {
+  if (lzr.v2.cmp(a, b) === 0) return true;
+  return false;
+}
+lzr.v2.lst_mn = function (lst) {
+  if (lst.length < 1) return null;
+
+  var mnv = lst[0];
+  for (var i = 1; i < lst.length; i++) {
+    if (lzr.v2.cmp(mnv, lst[i]) > 0) {
+      mnv = lst[i];
+    }
+  }
+  return mnv;
 }
 lzr.v2.lst_contains = function (lst, v) {
   for (var i = 0; i < lst.length; i++) {
@@ -762,6 +804,11 @@ lzr.pn.prototype = {
     pn.bndry.set_mnmx();
     var vs = pn.bndry.ordered_vrts(true); // ccw vrts for boundary
     if (pn.vds.length > 0) {
+
+      // set void mins & maxs
+      for (var i = 0; i < pn.vds.length; i++) pn.vds[i].set_mnmx();
+
+      // splice voids in order
       pn.vds.sort(lzr.lp.cmp);
       for (var i = 0; i < pn.vds.length; i++) {
         lzr.pn._splice_void(vs, pn.vds[i]);
@@ -772,8 +819,10 @@ lzr.pn.prototype = {
     dxs = [];
     trngls = [];
     for (i = 0; i < vs.length; i++) dxs.push(i);
-    while (dxs.length > 3) {
-      lzr.pn._clip_ear(trngls, vs, dxs);
+
+    var flcnt = 0;
+    while (dxs.length > 3 && flcnt < 100) {
+      if (!lzr.pn._clip_ear(trngls, vs, dxs)) flcnt++;
     }
     trngls.push([dxs[0], dxs[1], dxs[2]]); // add final triangle
 
@@ -787,48 +836,140 @@ lzr.pn.prototype = {
   }
 }
 
-// TODO - change for algo that works generally
+// splice void loop into boundary vertices list
 lzr.pn._splice_void = function (vs, lp) {
   if (lp.vrts.length <= 0) {
     console.log("cant splice empty void loop");
     return;
   }
 
+  // console.log("splicing " + lp.vrts + " into " + vs);
+
   // get min void loop vertex
-  lp.set_mnmx();
   var vv = lp.mn;
 
-  // find closest boundary vertex
-  var j = 0;
-  var mndx = 0;
-  var bv = vs[0];
-  var mndlta = lzr.sg.mag(lzr.sg.from_end(bv, vv));
-  while (j < vs.length - 1) {
-    j++;
-    bv = vs[j];
-    var dlta = lzr.sg.mag(lzr.sg.from_end(bv, vv));
-    if (dlta < mndlta) {
-      mndlta = dlta;
-      mndx = j;
+  // get segment from min void loop vertex to boundary min x value
+  var mnbv = lzr.v2.lst_mn(vs);
+  var isg = lzr.sg.from_end(vv, vec2.fromValues(mnbv[0], vv[1]));
+
+  // console.log("isg " + lzr.sg.stringize(isg));
+
+  // check if segment intersects any boundary vertices
+  for (var i = 0; i < vs.length; i++) {
+    var iv = vs[i];
+    if (iv[0] < vv[0]) { // check that iv is left of vv
+      if (Math.abs(iv[1] - vv[1]) < lzr.EPSILON) { // iv intersects! splice here
+
+        // splice cw loop vertices into list
+        var vvs = lp.ordered_vrts(false);
+        vvs.push(vv); // add entry void vertex at end again
+        vvs.push(iv); // add entry outer vertex again
+
+        while (vvs.length > 0) {
+          vs.splice(i + 1, 0, vvs.pop());
+        }
+        return true;
+      }
     }
   }
 
-  // splice cw loop vertices into list
-  var vvs = lp.ordered_vrts(false);
-  vvs.push(vv); // add entry void vertex at end again
-  vvs.push(vs[mndx]); // add entry outer vertex again
+  // check if segment intersects boundary segments
+  for (var i = 0; i < vs.length; i++) {
+    var j = i + 1;
+    if (j >= vs.length) j = 0;
 
-  while (vvs.length > 0) {
-    vs.splice(mndx + 1, 0, vvs.pop());
+    // console.log("checking segment from " + vs[i] + " to " + vs[j]);
+
+    // check that at least one end of segment is left of void vertex
+    if (vs[i][0] < vv[0] || vs[j][0] < vv[0]) {
+
+      // console.log("seg is left of void vertex");
+
+      // intersect segments
+      var bsg = lzr.sg.from_end(vs[i], vs[j]);
+      var nv = vec2.create();
+      if (lzr.sg.intersect(nv, bsg, isg)) {
+
+        // console.log("segments intersect at " + nv);
+
+        // check if intersection falls in bsgs y interval
+        if (lzr.sg.mny(bsg) < nv[1] && nv[1] < lzr.sg.mxy(bsg)) {
+
+          // console.log("intersection falls within y interval!");
+
+          // set iv to min x vertex of bsg
+          var iv = vec2.create();
+          var idx = i;
+          lzr.sg.orgn(iv, bsg);
+          if (bsg[2] < 0) {
+            lzr.sg.end(iv, bsg);
+            idx = j;
+          }
+
+          // generate intersection triangle & assure it is ccw
+          var itrngl = new lzr.trngl(vv, nv, iv);
+          itrngl.ccwize();
+
+          // check whether any other boundary vertices are in itrngl
+          var bdxs = [];
+          for (var k = 0; k < vs.length; k++) {
+            if (k !== idx && itrngl.contains(vs[k])) bdxs.push(k);
+          }
+
+          // if no boundary vertices found in itrngl splice at idx
+          if (bdxs.length === 0) {
+
+            // splice cw loop vertices into list
+            var vvs = lp.ordered_vrts(false);
+            vvs.push(vv); // add entry void vertex at end again
+            vvs.push(iv); // add entry outer vertex again
+
+            while (vvs.length > 0) {
+              vs.splice(idx + 1, 0, vvs.pop());
+            }
+            return true;
+          }
+
+          // find vertex from bdxs with lowest angle from isg
+          var xvdx = bdxs[0];
+          var mnangl = lzr.sg.angle_to(isg, vs[xvdx]);
+          for (var k = 1; k < bdxs.length; k++) {
+            var dx = bdxs[k];
+            var angl = lzr.sg.angle_to(isg, vs[dx]);
+            if (angl < mnangl) {
+              mnangl = angl;
+              xvdx = dx;
+            }
+          }
+
+          // splice at xvdx
+          var vvs = lp.ordered_vrts(false);
+          vvs.push(vv); // add entry void vertex at end again
+          vvs.push(vs[xvdx]); // add entry outer vertex again
+
+          while (vvs.length > 0) {
+            vs.splice(xvdx + 1, 0, vvs.pop());
+          }
+          return true;
+        }
+      } else {
+        // console.log("failed to intersect isg with segment " + lzr.sg.stringize(bsg));
+      }
+    }
   }
+  console.log("failed to splice void loop " + lp.vrts + " into " + vs);
+  return false;
 }
 
 // identify ear, add to triangles list & remove center node from dxs
 lzr.pn._clip_ear = function (trngls, vs, dxs) {
   if (dxs.length < 4) {
     console.log("cant clip ear from fewer than 4 vertices");
-    return;
+    return false;
   }
+
+  console.log("clipping ear from " + dxs.length + " dxs " + dxs);
+  console.log("from " + vs.length + " vertices " + vs);
 
   // loop thru groups of 3 vertex indices until an ear is found
   for (var i = 0; i < dxs.length; i++) {
@@ -845,7 +986,7 @@ lzr.pn._clip_ear = function (trngls, vs, dxs) {
       var inside = false;
       for (var j = 0; j < vs.length; j++) {
         var v = vs[j];
-        if (v !== vs[a] && v !== vs[b] && v !== vs[c]) {
+        if (v !== vs[dxs[a]] && v !== vs[dxs[b]] && v !== vs[dxs[c]]) {
           var trngl = new lzr.trngl(vs[dxs[a]], vs[dxs[b]], vs[dxs[c]]);
           if (trngl.contains(v)) {
             inside = true;
@@ -854,12 +995,14 @@ lzr.pn._clip_ear = function (trngls, vs, dxs) {
       }
       if (!inside) { // found an ear, clip it!!
         trngls.push([dxs[a], dxs[b], dxs[c]]); // add triangle to list
+        console.log("clipped ear " + [a, b, c] + " " + [dxs[a], dxs[b], dxs[c]] + " " + [vs[dxs[a]], vs[dxs[b]], vs[dxs[c]]]);
         dxs.splice(b, 1); // remove ear tip from vertex index list
-        return; // topology of remaining vertex indices has changed, return!
+        return true; // topology of remaining vertex indices has changed, return!
       }
     }
   }
   console.log("failed to clip ear!");
+  return false;
 }
 
 // same as ccw/cw test except now we know a->b->c is ccw & want to see if its convex
@@ -903,6 +1046,33 @@ lzr.lp.prototype = {
         lp.mx = vi;
       }
     }
+  },
+
+  offset: function () {
+    var lp = this;
+    if (lp.vrts.length < 3) return false;
+
+    // get ccw vertices list
+    var ovrts = lp.ordered_vrts(true);
+
+    // generate segments of polygon & offset
+    var sgs = [];
+    for (var i = 0; i < ovrts.length; i++) {
+      var j = i - 1;
+      if (j < 0) j = ovrts.length - 1;
+      var sg = lzr.sg.from_end(ovrts[j], ovrts[i]);
+      lzr.sg.offset(sg, sg, s);
+      sgs.push(sg);
+    }
+
+    // intersect segment origins with previous segment & set triangle vertices
+    for (i = 0; i < ovrts.length; i++) {
+      var j = i - 1;
+      if (j < 0) j = ovrts.length - 1;
+      lzr.sg.intersect(ovrts[i], sgs[i], sgs[j]);
+    }
+
+    return true;
   },
 
   // return list of vertices in ccw (or cw) order
@@ -1000,7 +1170,7 @@ lzr.trngl.prototype = {
     return 0;
   },
 
-  ccwize: function () {
+  is_ccw: function () {
     var trngl = this;
     if (trngl.vrts.length !== 3) return false;
 
@@ -1009,7 +1179,18 @@ lzr.trngl.prototype = {
     var c = trngl.vrts[2];
 
     // if not ccw flop second 2 nodes
-    if (((b[0] - a[0]) * (c[1] - a[1])) - ((c[0] - a[0]) * (b[1] - a[1])) > 0) {
+    if (((b[0] - a[0]) * (c[1] - a[1])) - ((c[0] - a[0]) * (b[1] - a[1])) > 0)
+      return false;
+
+    return true;
+  },
+
+  ccwize: function () {
+    var trngl = this;
+    if (trngl.vrts.length !== 3) return false;
+
+    // if not ccw flop second 2 nodes
+    if (!trngl.is_ccw()) {
       var tmp_vrt = trngl.vrts[1];
       trngl.vrts[1] = trngl.vrts[2];
       trngl.vrts[2] = tmp_vrt;
@@ -1387,6 +1568,14 @@ lzr.dlny.prototype = {
       }
       else {} // on the edge
     }
+
+    // remove omega triangles from triangle list
+    var ntrngls = [];
+    for (var i = 0; i < dlny.trngls.length; i++) {
+      var trngl = dlny.trngls[i];
+      if (!dlny.is_omg(trngl)) ntrngls.push(trngl);
+    }
+    dlny.trngls = ntrngls;
 
     return true;
   }
