@@ -71,7 +71,7 @@ function pwpw() {
 
   console.log("buffing earring");
 
-  rndrr.buff();
+  // rndrr.buff();
 
   // for (var i = 0; i < errng.pn.vds.length; i++) {
   //   var ft = new lzr.trngl(errng.pn.vds[i].vrts[0], errng.pn.vds[i].vrts[1], errng.pn.vds[i].vrts[2]);
@@ -89,40 +89,40 @@ function pwpw() {
   //   rndrr.mshs.push(r);
   // }
   //
-  for (var i = 0; i < errng.pn.trngls.length; i++) {
-    var t = errng.pn.trngls[i];
-    for (var j = 0; j < 3; j++) {
-      var k = j - 1;
-      if (k < 0) k = 2;
-      var l = new lzr.ln();
-      l.weight = 2;
-      l.rgba = [0.0, 0.0, 1.0, 0.5]; // blueish
-      l.vertices.push( errng.pn.vrts[t[k]] );
-      l.vertices.push( errng.pn.vrts[t[j]] );
-      // console.log("adding line vertices " + errng.pn.vertices[t[k]] + " " + errng.pn.vertices[t[j]]);
-      rndrr.mshs.push( l );
-    }
-  }
+  // for (var i = 0; i < errng.pn.trngls.length; i++) {
+  //   var t = errng.pn.trngls[i];
+  //   for (var j = 0; j < 3; j++) {
+  //     var k = j - 1;
+  //     if (k < 0) k = 2;
+  //     var l = new lzr.ln();
+  //     l.weight = 2;
+  //     l.rgba = [0.0, 0.0, 1.0, 0.5]; // blueish
+  //     l.vertices.push( errng.pn.vrts[t[k]] );
+  //     l.vertices.push( errng.pn.vrts[t[j]] );
+  //     // console.log("adding line vertices " + errng.pn.vertices[t[k]] + " " + errng.pn.vertices[t[j]]);
+  //     // rndrr.mshs.push( l );
+  //   }
+  // }
 
-  for (var i = 0; i < errng.pn.vrts.length; i++) {
-
-    var j = i - 1;
-    if (j < 0) j = errng.pn.vrts.length - 1;
-    var l = new lzr.ln();
-    l.weight = 10;
-    l.rgba = [0.0, 0.0, 0.0, 0.5]; // blackish
-    l.vertices.push( errng.pn.vrts[j] );
-    l.vertices.push( errng.pn.vrts[i] );
-    // console.log("adding line vertices " + errng.pn.vertices[t[k]] + " " + errng.pn.vertices[t[j]]);
-    rndrr.mshs.push( l );
-
-  }
-
-  for (var i = 0; i < errng.otrngls.length; i++) {
-    var ot = errng.otrngls[i];
-    ot.rgba = [0, 1, 0, 0.5];
-    rndrr.mshs.push(ot);
-  }
+  // for (var i = 0; i < errng.pn.vrts.length; i++) {
+  //
+  //   var j = i - 1;
+  //   if (j < 0) j = errng.pn.vrts.length - 1;
+  //   var l = new lzr.ln();
+  //   l.weight = 10;
+  //   l.rgba = [0.0, 0.0, 0.0, 0.5]; // blackish
+  //   l.vertices.push( errng.pn.vrts[j] );
+  //   l.vertices.push( errng.pn.vrts[i] );
+  //   // console.log("adding line vertices " + errng.pn.vertices[t[k]] + " " + errng.pn.vertices[t[j]]);
+  //   // rndrr.mshs.push( l );
+  //
+  // }
+  //
+  // for (var i = 0; i < errng.otrngls.length; i++) {
+  //   var ot = errng.otrngls[i];
+  //   ot.rgba = [0, 1, 0, 0.5];
+  //   rndrr.mshs.push(ot);
+  // }
   // for (var i = 0; i < dlny.trngls.length; i++) {
   //   var trngl = dlny.trngls[i];
   //   if (!dlny.is_omg(trngl)) {

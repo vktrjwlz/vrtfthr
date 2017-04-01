@@ -784,7 +784,8 @@ lzr.pn = function () {
   var pn = this;
   pn.bndry = new lzr.lp();
   pn.vds = []; // list of loops sorted by min x value
-  pn.rgba = [0, 0, 0, 1];
+  pn.rgba = [0.7, 0, 0, 0.7]; // reddish
+  pn.vd_rgba = [0.7, 0.7, 1.0, 0.7]; // whitish
   pn.vrts = null; // list of vec2s
   pn.trngls = null; // list of list of indices into vertices
   pn.colorBuff = new lzr.glbfr();
@@ -795,42 +796,36 @@ lzr.pn.prototype = {
 
   constructor: lzr.pn,
 
-  render: lzr.msh.prototype.render,
+  render: function (gl, sVars) {
+    var pn = this;
+
+    // set attribute pointers to position and color buffers for boundary loop
+    pn.bndry.positionBuff.point(gl, sVars.aPosition);
+    pn.bndry.colorBuff.point(gl, sVars.aColor);
+
+    // render triangles
+    gl.drawArrays(gl.TRIANGLES, 0, pn.bndry.positionBuff.numItems);
+
+    for (var i = 0; i < pn.vds.length; i++) {
+      // set attribute pointers to position and color buffers for boundary loop
+      pn.vds[i].positionBuff.point(gl, sVars.aPosition);
+      pn.vds[i].colorBuff.point(gl, sVars.aColor);
+
+      // render triangles
+      gl.drawArrays(gl.TRIANGLES, 0, pn.vds[i].positionBuff.numItems);
+    }
+  },
 
   buff: function (gl) {
     var pn = this;
     if (pn.bndry.vrts.length < 3) return;
 
-    // splice void loops into boundary loop to create vertex list
-    var vs = pn.bndry.ordered_vrts(true); // ccw vrts for boundary
-    if (pn.vds.length > 0) {
-
-      // splice voids in order
-      pn.vds.sort(lzr.lp.cmp);
-      for (var i = 0; i < pn.vds.length; i++) {
-        lzr.pn._splice_void(vs, pn.vds[i]);
-      }
+    pn.bndry.rgba = pn.rgba;
+    pn.bndry.buff(gl);
+    for (var i = 0; i < pn.vds.length; i++) {
+      pn.vds[i].rgba = pn.vd_rgba;
+      pn.vds[i].buff(gl);
     }
-
-    // generate triangles by clipping ears
-    dxs = [];
-    trngls = [];
-    for (i = 0; i < vs.length; i++) dxs.push(i);
-
-    var flcnt = 0;
-    while (dxs.length > 3 && flcnt < 100) {
-      if (!lzr.pn._clip_ear(trngls, vs, dxs)) flcnt++;
-    }
-    console.log("ear clipping fail count: " + flcnt);
-    trngls.push([dxs[0], dxs[1], dxs[2]]); // add final triangle
-
-    // load triangle vertices into position buffer
-    pn.vrts = vs;
-    pn.trngls = trngls;
-    pn.positionBuff.loadTriangles(gl, pn.vrts, pn.trngls);
-
-    // load color vertex for each triangle vertex in position buffer
-    pn.colorBuff.loadColor(gl, pn.positionBuff.numItems, pn.rgba);
   }
 }
 
@@ -880,6 +875,7 @@ lzr.pn._splice_void = function (vs, lp) {
   }
 
   // check if segment intersects boundary segments
+  var scts = []; // track potential intersections
   for (var i = 0; i < vs.length; i++) {
     var j = i + 1;
     if (j >= vs.length) j = 0;
@@ -893,86 +889,110 @@ lzr.pn._splice_void = function (vs, lp) {
 
       // intersect segments
       var bsg = lzr.sg.from_end(vs[i], vs[j]);
-      var nv = vec2.create();
-      if (lzr.sg.intersect(nv, bsg, isg)) {
+      var sv = vec2.create();
+      if (lzr.sg.intersect(sv, bsg, isg)) {
 
-        console.log("segments intersect at " + nv);
+        console.log("segments intersect at " + sv);
 
         // check if intersection falls in bsgs y interval
-        if (lzr.sg.mny(bsg) < nv[1] && nv[1] < lzr.sg.mxy(bsg)) {
+        if (lzr.sg.mny(bsg) < sv[1] && sv[1] < lzr.sg.mxy(bsg)) {
 
           console.log("intersection falls within y interval!");
 
-          // set iv to max x vertex of bsg
-          var iv = vec2.create();
-          var idx = i;
-          lzr.sg.orgn(iv, bsg);
-          if (bsg[2] > 0) {
-            lzr.sg.end(iv, bsg);
-            idx = j;
-          }
-
-          // generate intersection triangle & assure it is ccw
-          var itrngl = new lzr.trngl([vv, nv, iv], 0, 1, 2);
-          itrngl.ccwize();
-
-          // check whether any other boundary vertices are in itrngl
-          var bdxs = [];
-          for (var k = 0; k < vs.length; k++) {
-            if (k !== idx && itrngl.contains(vs[k])) bdxs.push(k);
-          }
-
-          // if no boundary vertices found in itrngl splice at idx
-          if (bdxs.length === 0) {
-
-            console.log("no intersecting vertices! adding");
-
-            // splice cw loop vertices into list
-            var vvs = lp.ordered_vrts(false);
-            while (vvs[0] !== vv) {
-              vvs.push(vvs.shift());
-            }
-            vvs.push(vv); // add entry void vertex at end again
-            vvs.push(iv); // add entry outer vertex again
-
-            while (vvs.length > 0) {
-              vs.splice(idx + 1, 0, vvs.pop());
-            }
-            return true;
-          }
-
-          console.log("found intersecting vertices: " + bdxs)
-
-          // find vertex from bdxs with lowest angle from isg
-          var xvdx = bdxs[0];
-          var mnangl = lzr.sg.angle_to(isg, vs[xvdx]);
-          for (var k = 1; k < bdxs.length; k++) {
-            var dx = bdxs[k];
-            var angl = lzr.sg.angle_to(isg, vs[dx]);
-            if (angl <= mnangl) { // we want last vertex in a tie
-              mnangl = angl;
-              xvdx = dx;
-            }
-          }
-
-          // splice at xvdx
-          var vvs = lp.ordered_vrts(false);
-          while (vvs[0] !== vv) {
-            vvs.push(vvs.shift());
-          }
-          vvs.push(vv); // add entry void vertex at end again
-          vvs.push(vs[xvdx]); // add entry outer vertex again
-
-          while (vvs.length > 0) {
-            vs.splice(xvdx + 1, 0, vvs.pop());
-          }
-          return true;
+          // add to potential intersection list
+          var sct = {};
+          sct.i = i;
+          sct.j = j;
+          sct.sv = sv;
+          sct.bsg = bsg;
+          scts.push(sct);
         }
-      } else {
-        // console.log("failed to intersect isg with segment " + lzr.sg.stringize(bsg));
       }
     }
   }
+
+  // find intersection with max x value
+  if (scts.length > 0) {
+    var mxx = scts[0].sv[0];
+    var mxsct = scts[0];
+    for (var i = 1; i < scts.length; i++) {
+      var nx = scts[i].sv[0];
+      if (nx > mxx) { // we want first intersection in a tie?
+        mxx = nx;
+        mxsct = scts[i];
+      }
+    }
+    var sv = mxsct.sv;
+    var i = mxsct.i;
+    var j = mxsct.j;
+    var bsg = mxsct.bsg;
+
+    // set iv to max x vertex of bsg
+    var iv = vec2.create();
+    var idx = i;
+    lzr.sg.orgn(iv, bsg);
+    if (bsg[2] > 0) {
+      lzr.sg.end(iv, bsg);
+      idx = j;
+    }
+
+    // generate intersection triangle & assure it is ccw
+    var itrngl = new lzr.trngl([vv, sv, iv], 0, 1, 2);
+    itrngl.ccwize();
+
+    // check whether any other boundary vertices are in itrngl
+    var bdxs = [];
+    for (var k = 0; k < vs.length; k++) {
+      if (k !== idx && itrngl.contains(vs[k])) bdxs.push(k);
+    }
+
+    // if no boundary vertices found in itrngl splice at idx
+    if (bdxs.length === 0) {
+
+      console.log("no intersecting vertices! adding");
+
+      // splice cw loop vertices into list
+      var vvs = lp.ordered_vrts(false);
+      while (vvs[0] !== vv) {
+        vvs.push(vvs.shift());
+      }
+      vvs.push(vv); // add entry void vertex at end again
+      vvs.push(iv); // add entry outer vertex again
+
+      while (vvs.length > 0) {
+        vs.splice(idx + 1, 0, vvs.pop());
+      }
+      return true;
+    }
+
+    console.log("found intersecting vertices: " + bdxs)
+
+    // find vertex from bdxs with lowest angle from isg
+    var xvdx = bdxs[0];
+    var mnangl = lzr.sg.angle_to(isg, vs[xvdx]);
+    for (var k = 1; k < bdxs.length; k++) {
+      var dx = bdxs[k];
+      var angl = lzr.sg.angle_to(isg, vs[dx]);
+      if (angl <= mnangl) { // we want last vertex in a tie
+        mnangl = angl;
+        xvdx = dx;
+      }
+    }
+
+    // splice at xvdx
+    var vvs = lp.ordered_vrts(false);
+    while (vvs[0] !== vv) {
+      vvs.push(vvs.shift());
+    }
+    vvs.push(vv); // add entry void vertex at end again
+    vvs.push(vs[xvdx]); // add entry outer vertex again
+
+    while (vvs.length > 0) {
+      vs.splice(xvdx + 1, 0, vvs.pop());
+    }
+    return true;
+  }
+
   console.log("failed to splice void loop " + lp.vrts + " into " + vs);
   return false;
 }
@@ -984,8 +1004,8 @@ lzr.pn._clip_ear = function (trngls, vs, dxs) {
     return false;
   }
 
-  console.log("clipping ear from " + dxs.length + " dxs " + dxs);
-  console.log("from " + vs.length + " vertices " + vs);
+  // console.log("clipping ear from " + dxs.length + " dxs " + dxs);
+  // console.log("from " + vs.length + " vertices " + vs);
 
   // loop thru groups of 3 vertex indices until an ear is found
   for (var i = 0; i < dxs.length; i++) {
@@ -1036,6 +1056,11 @@ lzr.pn._is_convex = function (a, b, c) {
 lzr.lp = function () {
   var lp = this;
   lp.vrts = [];
+  lp.trngls = null;
+  lp.rgba = [0, 0, 0, 1];
+  lp.colorBuff = new lzr.glbfr();
+  lp.positionBuff = new lzr.glbfr();
+  lp.clipfail = false;
 }
 
 lzr.lp.prototype = {
@@ -1142,6 +1167,26 @@ lzr.lp.prototype = {
     var det = ((b[0] - a[0]) * (c[1] - a[1])) - ((c[0] - a[0]) * (b[1] - a[1]));
     if (det < 0) return true;
     return false;
+  },
+
+  buff: function (gl) {
+    var lp = this;
+
+    var vs = lp.ordered_vrts(true)
+    var dxs = [];
+    var trngls = [];
+    for (i = 0; i < vs.length; i++) dxs.push(i);
+    lp.clipfail = false;
+    while (dxs.length > 3 && !lp.clipfail) {
+      if (!lzr.pn._clip_ear(trngls, vs, dxs)) lp.clipfail = true;
+    }
+    trngls.push([dxs[0], dxs[1], dxs[2]]); // add final triangle
+
+    // load triangle buffer
+    lp.positionBuff.loadTriangles(gl, vs, trngls);
+
+    // load color vertex for each triangle vertex in position buffer
+    lp.colorBuff.loadColor(gl, lp.positionBuff.numItems, lp.rgba);
   }
 }
 
@@ -1229,6 +1274,33 @@ lzr.trngl.prototype = {
     vec2.add(ouv, trngl.vrts[trngl.dxs[0]], trng.vrts[trngl.dxs[1]]);
     vec2.add(ouv, ouv, trngl.vrts[trngl.dxs[2]]);
     vec2.scale(ouv, ouv, 1.0/3.0);
+  },
+
+  get_angle: function (vdxdx) { // takes index of vertex index [0-2]
+    var trngl = this;
+
+    // get triangle vertices, with b as angle vertex
+    var ax = vdxdx - 1;
+    if (ax < 0) ax = 2;
+    var a = trngl.vrts[trngl.dxs[ax]];
+    var b = trngl.vrts[trngl.dxs[vdxdx]];
+    var cx = vdxdx + 1;
+    if (cx > 2) cx = 0;
+    var c = trngl.vrts[trngl.dxs[cx]];
+
+
+    // get vectors from angle vertex b to vertices a & c
+    var v1 = vec2.create();
+    vec2.sub(v1, a, b);
+    var v2 = vec2.create();
+    vec2.sub(v2, c, b);
+
+    // calculate angle from vector dot product
+    var angle = Math.acos(vec2.dot(v1, v2) / (vec2.length(v1)*vec2.length(v2)));
+
+    console.log("angle between vertices " + [a, b, c].join(" | ") + " is " + angle);
+
+    return angle;
   },
 
   // barycentric triangle interior test
