@@ -1031,7 +1031,7 @@ lzr.pn._clip_ear = function (trngls, vs, dxs) {
       }
       if (!inside) { // found an ear, clip it!!
         trngls.push([dxs[a], dxs[b], dxs[c]]); // add triangle to list
-        console.log("clipped ear " + [a, b, c] + " " + [dxs[a], dxs[b], dxs[c]] + " " + [vs[dxs[a]], vs[dxs[b]], vs[dxs[c]]]);
+        // console.log("clipped ear " + [a, b, c] + " " + [dxs[a], dxs[b], dxs[c]] + " " + [vs[dxs[a]], vs[dxs[b]], vs[dxs[c]]]);
         dxs.splice(b, 1); // remove ear tip from vertex index list
         return true; // topology of remaining vertex indices has changed, return!
       }
@@ -1298,7 +1298,7 @@ lzr.trngl.prototype = {
     // calculate angle from vector dot product
     var angle = Math.acos(vec2.dot(v1, v2) / (vec2.length(v1)*vec2.length(v2)));
 
-    console.log("angle between vertices " + [a, b, c].join(" | ") + " is " + angle);
+    // console.log("angle between vertices " + [a, b, c].join(" | ") + " is " + angle);
 
     return angle;
   },
