@@ -1105,7 +1105,7 @@ lzr.lp.prototype = {
     return mxdx;
   },
 
-  offset: function () {
+  offset: function (s) {
     var lp = this;
     if (lp.vrts.length < 3) return false;
 

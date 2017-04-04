@@ -6,14 +6,24 @@ mwstr.errng = function () {
   errng.sz = vec2.fromValues(1400, 400); // screen size of bounds
   errng.mmsz = vec2.fromValues(70, 20); // mm size of bounds
 
-  errng.wide_thrsh = Math.PI / 3.0;
+  errng.wide_thrsh = Math.PI / 2.5;
 
   errng.nmvrts = 20; // num vertices
   errng.mndst = 60; // min distance between vertices
   errng.strt = 8; // width of struts
 
   errng.hkdst = 200.0; // top keepout (for hook) (on left)
-  errng.hkvrts = [vec2.fromValues(150, 200), vec2.fromValues(150, 300)];
+  errng.hkvrts = [vec2.fromValues(150, 300), vec2.fromValues(150, 200)];
+  errng.hkx = [
+    vec2.fromValues(80, 220),
+    vec2.fromValues(60, 250),
+    vec2.fromValues(80, 280)];
+  errng.hkvd = [ // will be offset by strut width
+    vec2.fromValues(150, 200),
+    vec2.fromValues(80, 220),
+    vec2.fromValues(60, 250),
+    vec2.fromValues(80, 280),
+    vec2.fromValues(150, 300)];
 
   errng.dlny = null;
   errng.pn = null;
@@ -97,8 +107,10 @@ mwstr.errng.prototype = {
     console.log("edges: ");
     console.log(edges);
 
+    // create earring panel
     errng.pn = new lzr.pn();
 
+    // loop over edges (starting with first hook vrt dx) to generate boundary
     var fvdx = hkdxs[0];
     var nvdx = fvdx;
     errng.pn.bndry.vrts.push(vec2.clone(errng.dlny.vrts[nvdx]));
@@ -115,6 +127,22 @@ mwstr.errng.prototype = {
       delete edges[nvdx];
       nvdx = bvdx;
     }
+
+    // add hook extension vertices
+    for (var i = 0; i < errng.hkx.length; i++) {
+      errng.pn.bndry.vrts.push(vec2.clone(errng.hkx[i]));
+    }
+
+    // offset boundary loop
+    errng.pn.bndry.offset(errng.strt * 0.5);
+
+    // add hook void
+    var hkvd = new lzr.lp();
+    for (var i = 0; i < errng.hkvd.length; i++) {
+      hkvd.vrts.push(vec2.clone(errng.hkvd[i]));
+    }
+    hkvd.offset(errng.strt * -0.5);
+    errng.pn.vds.push(hkvd);
 
     console.log("adding earring voids");
 
