@@ -8,11 +8,12 @@ mwstr.errng = function () {
 
   errng.wide_thrsh = Math.PI / 2.5;
 
-  errng.nmvrts = 20; // num vertices
-  errng.mndst = 60; // min distance between vertices
+  errng.mxattmpts = 1000; // num times to attempt to generate vertices
+  errng.cll = 0.6; // ratio of generated vertices to cull
+  errng.mndst = 90; // min distance between vertices
   errng.strt = 8; // width of struts
 
-  errng.hkdst = 200.0; // top keepout (for hook) (on left)
+  errng.hkdst = 160.0; // top keepout (for hook) (on left)
   errng.hkvrts = [vec2.fromValues(150, 300), vec2.fromValues(150, 200)];
   errng.hkx = [
     vec2.fromValues(80, 220),
@@ -44,7 +45,7 @@ mwstr.errng.prototype = {
     errng.dlny = new lzr.dlny();
     var i = 0;
     var attmpts = 0;
-    while (attmpts < 10000) {
+    while (attmpts < errng.mxattmpts) {
       attmpts++;
       var vrt = vec2.fromValues(
          (Math.random() * (errng.sz[0] - errng.hkdst)) + errng.mn[0] + errng.hkdst,
@@ -55,8 +56,9 @@ mwstr.errng.prototype = {
         i++;
       }
     }
-    while (errng.dlny.vrts.length > i/2) errng.dlny.vrts.pop();
+    while (errng.dlny.vrts.length > i * errng.cll) errng.dlny.vrts.pop();
     console.log("generated " + i + " vertices in " + attmpts + " attempts");
+    console.log("culled to " + errng.dlny.vrts.length + " vertices");
 
     // add hook vertex
     var hkdxs = [];
@@ -81,12 +83,13 @@ mwstr.errng.prototype = {
 
       // prune triangles with one outside edge & wider than threshold
       if (edges.length === 1 && trngl.get_angle(edges[0]) > errng.wide_thrsh) {
-        console.log("pruning triangle " + trngl);
+        //console.log("pruning triangle " + trngl);
 
       } else {
         nwtrngls.push(trngl);
       }
     }
+    console.log("pruned " + (errng.dlny.trngls.length - nwtrngls.length).toString() + " triangles");
     errng.dlny.trngls = nwtrngls;
 
     // generate boundary loop from triangle edges without adjacent triangles
@@ -103,9 +106,6 @@ mwstr.errng.prototype = {
         }
       }
     }
-
-    console.log("edges: ");
-    console.log(edges);
 
     // create earring panel
     errng.pn = new lzr.pn();
