@@ -12,6 +12,7 @@ mwstr.errng = function () {
   errng.cll = 0.6; // ratio of generated vertices to cull
   errng.mndst = 90; // min distance between vertices
   errng.strt = 8; // width of struts
+  errng.mn_split_brdth = errng.strt * 5.0; // min breadth to split triangle
 
   errng.hkdst = 160.0; // top keepout (for hook) (on left)
   errng.hkvrts = [vec2.fromValues(150, 300), vec2.fromValues(150, 200)];
@@ -146,15 +147,32 @@ mwstr.errng.prototype = {
 
     console.log("adding earring voids");
 
-    errng.otrngls = [];
-
     for (var i = 0; i < errng.dlny.trngls.length; i++) {
-      var otrngl = errng.dlny.trngls[i].offset(errng.strt * -0.5);
-      errng.otrngls.push(otrngl);
-      var vd = new lzr.lp();
-      vd.vrts = otrngl.vrts.slice();
-      errng.pn.vds.push(vd);
-      // console.log(i + " " + otrngl);
+
+      var otrngl = errng.dlny.trngls[i].clone();
+
+      var omnb = otrngl.mn_brdth();
+      if (omnb > errng.mn_split_brdth) {
+        var cntr = vec2.create();
+        otrngl.get_center(cntr);
+        otrngl.vrts.push(cntr);
+        var mwtrngls = otrngl.split(3);
+
+        console.log(mwtrngls);
+
+        for (var j = 0; j < mwtrngls.length; j++) {
+          var omwtrngl = mwtrngls[j].offset(errng.strt * -0.5);
+          var vd = new lzr.lp();
+          vd.vrts = omwtrngl.vrts.slice();
+          errng.pn.vds.push(vd);
+        }
+      } else if (omnb > errng.splt * 2) {
+
+        otrngl = otrngl.offset(errng.strt * -0.5);
+        var vd = new lzr.lp();
+        vd.vrts = otrngl.vrts.slice();
+        errng.pn.vds.push(vd);
+      }
     }
   }
 }

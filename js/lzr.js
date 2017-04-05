@@ -1243,6 +1243,17 @@ lzr.trngl.prototype = {
     return 0;
   },
 
+  clone: function () {
+    var trngl = this;
+
+    var ovrts = [];
+    for (var i = 0; i < 3; i++) {
+      ovrts.push(vec2.clone(trngl.vrts[trngl.dxs[i]]));
+    }
+
+    return new lzr.trngl(ovrts, 0, 1, 2);
+  },
+
   is_ccw: function () {
     var trngl = this;
     if (trngl.dxs.length !== 3) return false;
@@ -1275,7 +1286,7 @@ lzr.trngl.prototype = {
   get_center: function (ouv) {
     var trngl = this;
 
-    vec2.add(ouv, trngl.vrts[trngl.dxs[0]], trng.vrts[trngl.dxs[1]]);
+    vec2.add(ouv, trngl.vrts[trngl.dxs[0]], trngl.vrts[trngl.dxs[1]]);
     vec2.add(ouv, ouv, trngl.vrts[trngl.dxs[2]]);
     vec2.scale(ouv, ouv, 1.0/3.0);
   },
