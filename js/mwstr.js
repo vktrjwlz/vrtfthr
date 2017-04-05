@@ -4,15 +4,15 @@ mwstr.errng = function () {
   var errng = this;
   errng.mn = vec2.fromValues(50, 50); // min screen coord of bounds
   errng.sz = vec2.fromValues(1400, 400); // screen size of bounds
-  errng.mmsz = vec2.fromValues(70, 20); // mm size of bounds
+  errng.mmsz = vec2.fromValues(70, 20); // millimeter size of bounds
 
-  errng.wide_thrsh = Math.PI / 2.5;
+  errng.wide_thrsh = Math.PI / 1.5;
 
   errng.mxattmpts = 1000; // num times to attempt to generate vertices
   errng.cll = 0.6; // ratio of generated vertices to cull
-  errng.mndst = 90; // min distance between vertices
-  errng.strt = 8; // width of struts
-  errng.mn_split_brdth = errng.strt * 5.0; // min breadth to split triangle
+  errng.mndst = 100; // min distance between vertices
+  errng.strt = 12; // width of struts
+  errng.mn_split_brdth = errng.strt * 3.0; // min breadth to split triangle
 
   errng.hkdst = 160.0; // top keepout (for hook) (on left)
   errng.hkvrts = [vec2.fromValues(150, 300), vec2.fromValues(150, 200)];
@@ -72,26 +72,8 @@ mwstr.errng.prototype = {
     errng.dlny.triangulate();
 
     // prune edge triangles
-    var nwtrngls = [];
-    for (var i = 0; i < errng.dlny.trngls.length; i++) {
-      var trngl = errng.dlny.trngls[i];
-      var edges = [];
-      for (var j = 0; j < trngl.dxs.length; j++) {
-        if (errng.dlny.get_adjacent(trngl, trngl.dxs[j]) === null) {
-          edges.push(j);
-        }
-      }
-
-      // prune triangles with one outside edge & wider than threshold
-      if (edges.length === 1 && trngl.get_angle(edges[0]) > errng.wide_thrsh) {
-        //console.log("pruning triangle " + trngl);
-
-      } else {
-        nwtrngls.push(trngl);
-      }
-    }
-    console.log("pruned " + (errng.dlny.trngls.length - nwtrngls.length).toString() + " triangles");
-    errng.dlny.trngls = nwtrngls;
+    errng.prune_edge_trngls(errng.wide_thrsh);
+    errng.prune_edge_trngls(errng.wide_thrsh * 1.5);
 
     // generate boundary loop from triangle edges without adjacent triangles
     var edges = {}; // map from first vertex index to second vertex index
@@ -158,8 +140,6 @@ mwstr.errng.prototype = {
         otrngl.vrts.push(cntr);
         var mwtrngls = otrngl.split(3);
 
-        console.log(mwtrngls);
-
         for (var j = 0; j < mwtrngls.length; j++) {
           var omwtrngl = mwtrngls[j].offset(errng.strt * -0.5);
           var vd = new lzr.lp();
@@ -174,5 +154,30 @@ mwstr.errng.prototype = {
         errng.pn.vds.push(vd);
       }
     }
+  },
+
+  prune_edge_trngls: function (mnangl) {
+    var errng = this;
+
+    var nwtrngls = [];
+    for (var i = 0; i < errng.dlny.trngls.length; i++) {
+      var trngl = errng.dlny.trngls[i];
+      var edges = [];
+      for (var j = 0; j < trngl.dxs.length; j++) {
+        if (errng.dlny.get_adjacent(trngl, trngl.dxs[j]) === null) {
+          edges.push(j);
+        }
+      }
+
+      // prune triangles with one outside edge & wider than threshold
+      if (edges.length === 1 && trngl.get_angle(edges[0]) > mnangl) {
+        //console.log("pruning triangle " + trngl);
+
+      } else {
+        nwtrngls.push(trngl);
+      }
+    }
+    console.log("pruned " + (errng.dlny.trngls.length - nwtrngls.length).toString() + " triangles");
+    errng.dlny.trngls = nwtrngls;
   }
 }
