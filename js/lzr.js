@@ -498,17 +498,21 @@ lzr.sg.intersect_intrvl = function (out, sga, sgb, sgc) { // lzr.sg
 
 // project vec2 p onto sg sg and set out vec2 ouv
 lzr.sg.project = function (ouv, p, sg) { // vec2 ouv, p / lzr.sg sg
+
   var a = vec2.create();
-  vec2.sub( a, p, lzr.sg.orgn(sg) ); // a is vector from origin to p
+  var orgn = vec2.create();
+  lzr.sg.orgn(orgn, sg);
+  vec2.sub(a, p, orgn); // a is vector from origin to p
 
   // project a onto delta vector
-  var b = vec2.clone( lzr.sg.dlta(sg) );
-  vec2.normalize( b, b );
-  vec2.scalar( b, vec2.dot(a, b) );
+  var b = vec2.create();
+  lzr.sg.dlta(b, sg);
+  vec2.normalize(b, b);
+  vec2.scale(b, b, vec2.dot(a, b));
 
   // add vector b to origin to get new point projected onto sgment
-  vec2.add( out, lzr.sg.orgn(sg), b );
-  return out;
+  vec2.add(ouv, orgn, b);
+  return ouv;
 }
 
 // return distance from sg sg to vec2 p, orthogonal to sg
@@ -1274,6 +1278,29 @@ lzr.trngl.prototype = {
     vec2.add(ouv, trngl.vrts[trngl.dxs[0]], trng.vrts[trngl.dxs[1]]);
     vec2.add(ouv, ouv, trngl.vrts[trngl.dxs[2]]);
     vec2.scale(ouv, ouv, 1.0/3.0);
+  },
+
+  // calculate min breadth from vertex normal to opposite edge
+  mn_brdth: function () {
+    var trngl = this;
+
+    var vrt =  trngl.vrts[trngl.dxs[0]];
+    var osg = lzr.sg.from_end(trngl.vrts[trngl.dxs[1]], trngl.vrts[trngl.dxs[2]]);
+
+    var mnbrdth = lzr.sg.distance(osg, vrt);
+    for (var i = 1; i < 3; i++) {
+      vrt = trngl.vrts[trngl.dxs[i]];
+      var j = i + 1;
+      if (j > 2) j = 0;
+      var k = j + 1;
+      if (k > 2) k = 0;
+      osg = lzr.sg.from_end(trngl.vrts[trngl.dxs[j]], trngl.vrts[trngl.dxs[k]]);
+      var brdth = lzr.sg.distance(osg, vrt);
+
+      if (brdth < mnbrdth) mnbrdth = brdth;
+    }
+
+    return mnbrdth;
   },
 
   get_angle: function (vdxdx) { // takes index of vertex index [0-2]
