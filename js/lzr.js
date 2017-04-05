@@ -830,6 +830,124 @@ lzr.pn.prototype = {
       pn.vds[i].rgba = pn.vd_rgba;
       pn.vds[i].buff(gl);
     }
+  },
+
+  // generate dxf file from this pn
+  // http://paulbourke.net/dataformats/dxf/min3d.html
+  dxffy: function (mx, scl) {
+    var pn = this;
+
+    var dxf = [ // array of string lines of dxf file
+
+      // header
+      "999", "dxf created from lzr.js",
+      "0", "SECTION",
+      "2", "HEADER",
+        "9", "$ACADVER",
+          "1", "AC1006",
+        "9", "$INSUNITS",
+          "70", "4",
+        "9", "$INSBASE",
+          "10", "0.0",
+          "20", "0.0",
+          "30", "0.0",
+        "9", "$EXTMIN",
+          "10", "0.0",
+          "20", "0.0",
+        "9", "$EXTMAX",
+          "10", mx[0] * scl[0],
+          "20", mx[1] * scl[1],
+      "0", "ENDSEC",
+
+      // tables
+      "0", "SECTION",
+      "2", "TABLES",
+        "0", "TABLE",
+        "2", "LTYPE",
+          "70", "1",
+          "0", "LTYPE",
+          "2", "CONTINUOUS",
+          "70", "64",
+          "3", "Solid line",
+          "72", "65",
+          "73", "0",
+          "40", "0.000000",
+        "0", "ENDTAB",
+        "0", "TABLE",
+        "2", "LAYER",
+          "70", "6",
+          "0", "LAYER",
+          "2", "bndry",
+            "70", "64",
+            "62", "7",
+            "6", "CONTINUOUS",
+          "0", "LAYER",
+          "2", "vds",
+            "70", "64",
+            "62", "7",
+            "6", "CONTINUOUS",
+        "0", "ENDTAB",
+        "0", "TABLE",
+          "2", "STYLE",
+          "70", "0",
+        "0", "ENDTAB",
+      "0", "ENDSEC",
+
+      // blocks (empty)
+      "0", "SECTION",
+      "2", "BLOCKS",
+      "0", "ENDSEC",
+
+      // entities (opening)
+      "0", "SECTION",
+      "2", "ENTITIES",
+    ];
+
+    // write polyline for boundary loop
+    dxf.push(
+      "0", "LWPOLYLINE",
+      "8", "bndry",
+      "62", "7");
+    for (var i = 0; i < pn.bndry.vrts.length; i++) {
+      var v = pn.bndry.vrts[i];
+
+      dxf.push(
+        "10", v[0] * scl[0],
+        "20", v[1] * scl[1],
+        "30", "0.0");
+    }
+    // close loop
+    dxf.push(
+      "10", pn.bndry.vrts[0][0] * scl[0],
+      "20", pn.bndry.vrts[0][1] * scl[1],
+      "30", "0.0");
+
+    // write polyline for each void loop
+    for (var i = 0; i < pn.vds.length; i++) {
+      dxf.push(
+        "0", "LWPOLYLINE",
+        "8", "vds",
+        "62", "7");
+      for (var j = 0; j < pn.vds[i].vrts.length; j++) {
+        var v = pn.vds[i].vrts[j];
+        dxf.push(
+          "10", v[0] * scl[0],
+          "20", v[1] * scl[1],
+          "30", "0.0");
+      }
+      dxf.push(
+        "10", pn.vds[i].vrts[0][0] * scl[0],
+        "20", pn.vds[i].vrts[0][1] * scl[1],
+        "30", "0.0");
+    }
+
+    // end dxf file
+    dxf.push(
+      "0", "ENDSEC", // end entities section
+      "0", "EOF", "" // end file with newline
+    );
+
+    return dxf;
   }
 }
 

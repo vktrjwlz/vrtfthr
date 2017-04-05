@@ -179,5 +179,24 @@ mwstr.errng.prototype = {
     }
     console.log("pruned " + (errng.dlny.trngls.length - nwtrngls.length).toString() + " triangles");
     errng.dlny.trngls = nwtrngls;
+  },
+
+  dl_dxf: function () {
+    var errng = this;
+
+    var mx = vec2.fromValues(
+      errng.mn[0] * 2.0 + errng.sz[0],
+      errng.mn[1] * 2.0 + errng.sz[1]);
+
+    var scl = vec2.fromValues(
+      errng.mmsz[0] / errng.sz[0],
+      errng.mmsz[1] / errng.sz[1]);
+
+    // generate dxf
+    var dxf = errng.pn.dxffy(mx, scl);
+
+    // download it
+    lzr.dl.txt(dxf);
+
   }
 }
