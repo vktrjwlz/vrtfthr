@@ -73,7 +73,7 @@ mwstr.errng.prototype = {
 
     // prune edge triangles
     errng.prune_edge_trngls(errng.wide_thrsh);
-    errng.prune_edge_trngls(errng.wide_thrsh * 1.5);
+    errng.prune_edge_trngls(errng.wide_thrsh);
 
     // generate boundary loop from triangle edges without adjacent triangles
     var edges = {}; // map from first vertex index to second vertex index

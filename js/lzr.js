@@ -1792,3 +1792,15 @@ lzr.dlny.flip_trngls = function (atrngl, btrngl) {
 }
 // --dlny
 // ********
+
+// ****************
+// dl -> methods to download files from browser
+//
+lzr.dl = {};
+lzr.dl.txt = function (lns) {
+  var blburl = URL.createObjectURL(
+    new Blob([lns.join("\n")], {type: 'application/octet-stream'}));
+  location.href = blburl;
+};
+// --dl
+// ********
