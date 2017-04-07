@@ -22,6 +22,7 @@ lzr.rndrr = function (cnvs) {
   rndrr.cnvs = cnvs; // canvas element
   rndrr.pxl_rtio = window.devicePixelRatio || 1;
   rndrr.mshs = []; // list of mesh objects to render
+  rndrr.zoom = vec2.fromValues(1.0, 1.0);
 
   // init gl context
   rndrr.gl = rndrr.cnvs.getContext("webgl");
@@ -54,6 +55,8 @@ lzr.rndrr = function (cnvs) {
 
   // get gl shader variables
   rndrr.sVars = {};
+  rndrr.sVars.uZoom = rndrr.gl.getUniformLocation(
+    rndrr.shader, "u_zoom" );
   rndrr.sVars.uResolution = rndrr.gl.getUniformLocation(
     rndrr.shader, "u_resolution" );
   rndrr.sVars.aPosition = rndrr.gl.getAttribLocation(
@@ -93,6 +96,10 @@ lzr.rndrr.prototype = {
     }
 
     rndrr.gl.viewport(0, 0, rndrr.cnvs.width, rndrr.cnvs.height);
+
+    rndrr.gl.uniform2f(
+      rndrr.sVars.uZoom, rndrr.zoom[0], rndrr.zoom[1]
+    );
 
     rndrr.gl.uniform2f(
       rndrr.sVars.uResolution, rndrr.cnvs.width, rndrr.cnvs.height
@@ -138,14 +145,18 @@ lzr._vertexShader =
   "attribute vec2 a_position;" +
   "attribute vec4 a_color;" +
 
+  "uniform vec2 u_zoom;" +
   "uniform vec2 u_resolution;" +
 
   "varying vec4 v_color;" +
 
   "void main() {" +
 
+    // apply zoom factor
+  "  vec2 zoomed = a_position * u_zoom;" +
+
      // convert the position from pixels to 0.0 to 1.0
-  "  vec2 zeroToOne = a_position / u_resolution;" +
+  "  vec2 zeroToOne = zoomed / u_resolution;" +
 
      // convert from 0->1 to 0->2
   "  vec2 zeroToTwo = zeroToOne * 2.0;" +

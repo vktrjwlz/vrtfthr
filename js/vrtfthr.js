@@ -1,6 +1,9 @@
-var mwstr = {}; // init lzr namespace
+var vrtfthr = {}; // init lzr namespace
 
-mwstr.errng = function () {
+// ****************
+// errng -> generate an earring & output cut file
+//
+vrtfthr.errng = function () {
   var errng = this;
   errng.mn = vec2.fromValues(50, 50); // min screen coord of bounds
   errng.sz = vec2.fromValues(1400, 400); // screen size of bounds
@@ -31,11 +34,11 @@ mwstr.errng = function () {
   errng.pn = null;
 }
 
-mwstr.errng.prototype = {
+vrtfthr.errng.prototype = {
 
-  constructor: mwstr.errng,
+  constructor: vrtfthr.errng,
 
-  // generate a new mwstr earring
+  // generate a new vrtfthr earring
   generate: function() {
     var errng = this;
 
@@ -199,4 +202,160 @@ mwstr.errng.prototype = {
     lzr.dl.txt(dxf);
 
   }
+}
+
+vrtfthr.fthr = function() {
+  var fthr = this;
+
+  fthr.orgn = vec2.fromValues(3, 18);
+  fthr.angl = 0.0;
+  fthr.lngth = 60.0;
+  fthr.lngth_br = 10.0;
+  fthr.brdth = 2.0;
+  fthr.rb_dltk = 4.0;
+  fthr.rb_dltk_br = 0.5;
+  fthr.rb_angl = 1.0; // radians
+  fthr.rb_angl_br = 0.1;
+  fthr.rb_lngth = 15.0;
+  fthr.rb_lngth_br = 3.0;
+  fthr.rb_brdth = 1.5;
+  fthr.ndl_dltk = 1.0;
+  fthr.ndl_dltk_br = 0.2;
+  fthr.ndl_angl = 1.3;
+  fthr.ndl_angl_br = 0.2;
+  fthr.ndl_lngth = 3.0;
+  fthr.ndl_lngth_br = 0.5;
+  fthr.ndl_brdth = 1.0;
+
+  fthr.spn = null;
+}
+vrtfthr.fthr.prototype = {
+
+  constructor: vrtfthr.fthr,
+
+  generate: function () {
+    var fthr = this;
+
+    // gen delta vector with length in bar
+    var spn_lngth = vrtfthr.rndbr(fthr.lngth, fthr.lngth_br);
+    var dlta = vec2.fromValues(spn_lngth, 0);
+
+    // rotate vector by angle
+    var rtmt = mat2.create();
+    var angl = fthr.angl;
+    mat2.fromRotation(rtmt, angl);
+    vec2.transformMat2(dlta, dlta, rtmt);
+
+    // gen spine
+    var orgn = fthr.orgn;
+    fthr.spn = new vrtfthr.spn(orgn, dlta, fthr.brdth);
+
+    // gen ribs
+    var dltk = fthr.rb_dltk; // start a ways down spine?
+    var dir = 1.0;
+    // console.log("dltk: " + dltk + ", limit: " + (1.0 - (fthr.rb_dltk + fthr.rb_dltk_br)).toString());
+    while (dltk < (spn_lngth - (2 * fthr.rb_dltk))) {
+      // console.log("rb dltk: " + dltk);
+      dltk = dltk + vrtfthr.rndbr(fthr.rb_dltk, fthr.rb_dltk_br);
+      dir = dir * -1.0;
+
+      // gen rib origin
+      orgn = vec2.create();
+      vec2.normalize(orgn, fthr.spn.dlta);
+      vec2.scale(orgn, orgn, dltk);
+      vec2.add(orgn, orgn, fthr.spn.orgn);
+
+      // gen rib delta
+      dlta = vec2.create();
+      vec2.normalize(dlta, fthr.spn.dlta);
+
+      angl = vrtfthr.rndbr(fthr.rb_angl, fthr.rb_angl_br);
+      mat2.fromRotation(rtmt, angl * dir);
+      vec2.transformMat2(dlta, dlta, rtmt);
+
+      var rb_lngth = vrtfthr.rndbr(fthr.rb_lngth, fthr.rb_lngth_br);
+      rb_lngth = rb_lngth * ((spn_lngth - (dltk * 0.5)) / spn_lngth);
+      vec2.scale(dlta, dlta, rb_lngth);
+
+      fthr.spn.rbs.push(new vrtfthr.rb(orgn, dlta, fthr.rb_brdth));
+    }
+
+    // gen needles
+    for (var i = 0; i < fthr.spn.rbs.length; i++) {
+      var rb = fthr.spn.rbs[i];
+      var rb_length = vec2.length(rb.dlta);
+      dltk = fthr.ndl_dltk * 2.5;
+      while (dltk < (rb_length - (2 * fthr.ndl_dltk))) {
+        dltk = dltk + vrtfthr.rndbr(fthr.ndl_dltk, fthr.ndl_dltk_br);
+        dir = dir * -1.0;
+
+        // gen needle origin
+        orgn = vec2.create();
+        vec2.normalize(orgn, rb.dlta);
+        vec2.scale(orgn, orgn, dltk);
+        vec2.add(orgn, orgn, rb.orgn);
+
+        // gen needdle delta
+        dlta = vec2.create();
+        vec2.normalize(dlta, rb.dlta);
+
+        angl = vrtfthr.rndbr(fthr.ndl_angl, fthr.ndl_angl_br);
+        mat2.fromRotation(rtmt, angl * dir);
+        vec2.transformMat2(dlta, dlta, rtmt);
+
+        lngth = vrtfthr.rndbr(fthr.ndl_lngth, fthr.ndl_lngth_br);
+        vec2.scale(dlta, dlta, lngth);
+
+        rb.ndls.push(new vrtfthr.ndl(orgn, dlta, fthr.ndl_brdth));
+      }
+    }
+  }
+}
+
+// ****************
+// spn -> spine of feather
+//
+vrtfthr.spn = function (orgn, dlta, brdth) {
+  var spn = this;
+
+  spn.orgn = orgn;
+  spn.dlta = dlta;
+  spn.brdth = brdth;
+  spn.rbs = [];
+}
+vrtfthr.spn.prototype = {
+  constructor: vrtfthr.spn
+}
+
+// ****************
+// rb -> rib of feather
+//
+vrtfthr.rb = function (orgn, dlta, brdth) {
+  var rb = this;
+
+  rb.orgn = orgn;
+  rb.dlta = dlta;
+  rb.brdth = brdth;
+  rb.ndls = [];
+}
+vrtfthr.rb.prototype = {
+  constructor: vrtfthr.rb
+}
+
+// ****************
+// ndl -> needle on rib of feather
+//
+vrtfthr.ndl = function (orgn, dlta, brdth) {
+  var ndl = this;
+
+  ndl.orgn = orgn;
+  ndl.dlta = dlta;
+  ndl.brdth = brdth;
+}
+vrtfthr.ndl.prototype = {
+  constructor: vrtfthr.ndl
+}
+
+vrtfthr.rndbr = function(s, br) {
+  return (Math.random() * br) + s - (br * 0.5);
 }
